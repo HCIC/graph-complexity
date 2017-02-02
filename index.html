@@ -3,16 +3,19 @@
 <g id="edgelines"></g>
 <g id="vertexcircles"></g>
 </svg>
+<div id="parameter_inputs"></div>
 <script>
-  var width = 600;
-  var height = 600;
+  var p = {
+    "width": 600,
+    "height": 600,
+    "vertexRadius": 10,
+    "vertexColor": "black",
+    "edgeColor": "black",
 
-  var vertexRadius = 10;
-  var vertexColor = "black";
-  var edgeColor = "black";
+    "repelStrength": -100,
+    "gravityStrength": 0.03,
+  }
 
-  var repelStrength = -100;
-  var gravityStrength = 0.03;
   //TODO: browser
   //TODO: screen resolution
   //TODO: vertex color
@@ -63,19 +66,19 @@
     */
 
   d3.select("#graphsvg")
-    .attr("width", width)
-    .attr("height", height)
+    .attr("width", p.width)
+    .attr("height", p.height)
     .style("border", "1px solid black")
 
   var simulation = d3.forceSimulation()
-    .force("center", d3.forceCenter(width / 2, height / 2))
-    .force("gravityx", d3.forceX(width / 2).strength(gravityStrength))
-    .force("gravityy", d3.forceY(height / 2).strength(gravityStrength))
-    .force("charge", d3.forceManyBody().strength(repelStrength))
+    .force("center", d3.forceCenter(p.width / 2, p.height / 2))
+    .force("gravityx", d3.forceX(p.width / 2).strength(p.gravityStrength))
+    .force("gravityy", d3.forceY(p.height / 2).strength(p.gravityStrength))
+    .force("charge", d3.forceManyBody().strength(p.repelStrength))
     .force("link", d3.forceLink().id(function(d) {
       return d.id;
     }))
-    .force("collide", d3.forceCollide(vertexRadius));
+    .force("collide", d3.forceCollide(p.vertexRadius));
 
   simulation.nodes(graph.vertices);
   simulation.force("link").links(graph.edges);
@@ -83,14 +86,14 @@
   simulation.on("end", function() {
     d3.select("#vertexcircles").selectAll("circle").data(graph.vertices).enter()
       .append("circle")
-      .attr("r", vertexRadius)
+      .attr("r", p.vertexRadius)
       .attr("cx", function(d) {
         return d.x;
       })
       .attr("cy", function(d) {
         return d.y;
       })
-      .attr("fill", vertexColor)
+      .attr("fill", p.vertexColor)
 
     d3.select("#edgelines").selectAll("line").data(graph.edges).enter()
       .append("line")
@@ -106,6 +109,25 @@
       .attr("y2", function(d) {
         return d.target.y;
       })
-      .attr("stroke", edgeColor)
+      .attr("stroke", p.edgeColor);
+
+    var pdata = [];
+    for (var key in p) {
+      pdata.push({
+        "name": key,
+        "value": p[key]
+      });
+    }
+    console.log(pdata);
+    d3.select("#parameter_inputs").selectAll("input").data(pdata).enter()
+      .append("input")
+      .attr("type", "hidden")
+      .attr("name", function(d) {
+        return d.name;
+      })
+      .attr("value", function(d) {
+        return d.value;
+      });
+
   });
 </script>
