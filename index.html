@@ -31,7 +31,7 @@ var edges = [
 d3.select("#graphsvg")
     .attr("width", width)
     .attr("height", height)
-    .attr("border", "1px solid black")
+    .style("border", "1px solid black")
 
 var simulation = d3.forceSimulation()
     .force("link", d3.forceLink().id(function(d) { return d.id; }))
