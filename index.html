@@ -1,9 +1,13 @@
 <script src="https://d3js.org/d3.v4.js"></script>
+<script src="https://cdn.jsdelivr.net/lodash/4.17.4/lodash.js"></script>
+
 <svg id="graphsvg">
 <g id="edgelines"></g>
 <g id="vertexcircles"></g>
 </svg>
+
 <div id="parameter_inputs"></div>
+
 <script>
   var p = {
     "width": 600,
@@ -11,10 +15,27 @@
     "vertexRadius": 10,
     "vertexColor": "black",
     "edgeColor": "black",
+    "backgroundColor": "white",
 
     "repelStrength": -100,
     "gravityStrength": 0.03,
   }
+
+  var vertexColorLab = d3.lab(p.vertexColor);
+  var edgeColorLab = d3.lab(p.edgeColor);
+  var backgroundColorLab = d3.lab(p.backgroundColor);
+  _.merge(p, {
+    "vertexColorLab_l": vertexColorLab.l,
+    "vertexColorLab_a": vertexColorLab.a,
+    "vertexColorLab_b": vertexColorLab.b,
+    "edgeColorLab_l": edgeColorLab.l,
+    "edgeColorLab_a": edgeColorLab.a,
+    "edgeColorLab_b": edgeColorLab.b,
+    "backgroundColorLab_l": backgroundColorLab.l,
+    "backgroundColorLab_a": backgroundColorLab.a,
+    "backgroundColorLab_b": backgroundColorLab.b,
+  });
+
 
   //TODO: browser
   //TODO: screen resolution
@@ -65,6 +86,7 @@
   d3.select("#graphsvg")
     .attr("width", p.width)
     .attr("height", p.height)
+    .style("background-color", p.backgroundColor)
     .style("border", "1px solid black")
 
   var simulation = d3.forceSimulation()
@@ -79,7 +101,7 @@
 
   simulation.nodes(graph.vertices);
   simulation.force("link").links(graph.edges);
-  simulation.stop()
+  simulation.stop();
   while (simulation.alpha() >= simulation.alphaMin()) {
     simulation.tick();
   }
