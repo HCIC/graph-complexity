@@ -18,7 +18,7 @@
     "edgeColor": "black",
     "backgroundColor": "white",
     "borderColor": "black",
-    "borderWidth": "2",
+    "borderWidth": 2,
 
     "repelStrength": -100,
     "linkDistance": 50,
@@ -38,7 +38,10 @@
   _.merge(p, detectBrowser());
 
 
-  var graph = gilbert(d3.randomUniform(1, 25)(), 0.15)
+  //var graph = gilbert(d3.randomUniform(1, 25)(), 0.15)
+  var graph = newman(20, function() {
+    return _.random(1, 4);
+  })
 
   styleSVG(p, d3.select("#graphsvg"))
   layoutGraph(p, graph);
@@ -177,7 +180,60 @@
     }
     return {
       "vertices": v,
-      "edges": e
+      "edges": e,
+    };
+  }
+
+  function randomIndex(n) {
+    return _.random(0, n - 1);
+  }
+
+  function randomElement(arr) {
+    return arr[randomIndex(arr.length)];
+  }
+
+  function newman(n, degp) {
+    var vertices = _.times(n, function(i) {
+      return {
+        "id": i,
+        "openstubs": degp(),
+      };
+    });
+    while (_.sumBy(vertices, 'openstubs') % 2 == 1) {
+      vertices[randomIndex(n)].openstubs = degp();
+    }
+    var edgeCount = _.sumBy(vertices, 'openstubs') / 2;
+    var edges = [];
+    for (var i = 0; i < edgeCount; i++) {
+      var candidates = _.filter(vertices, function(v) {
+        return v.openstubs > 0;
+      });
+      if (candidates.length == 1) {
+        //TODO:
+        console.warn("cannot create more edges. Only one vertex left", candidates);
+        break;
+      }
+      var source = randomElement(candidates);
+      var target;
+      do {
+        target = randomElement(candidates);
+      } while (target.id == source.id);
+      source.openstubs -= 1;
+      target.openstubs -= 1;
+      edges.push({
+        "source": source.id,
+        "target": target.id,
+      });
+    }
+    // remove openstubs fields
+    vertices = _.map(vertices, function(v) {
+      return {
+        "id": v.id
+      };
+    })
+    return {
+      "vertices": vertices,
+      "edges": edges,
     };
   }
 
