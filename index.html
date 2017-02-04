@@ -1,4 +1,4 @@
-<script src="https://d3js.org/d3.v4.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/4.5.0/d3.min.js"></script>
 <script src="https://cdn.jsdelivr.net/lodash/4.17.4/lodash.js"></script>
 
 <svg id="graphsvg">
@@ -13,39 +13,158 @@
     "width": 600,
     "height": 600,
     "vertexRadius": 10,
+    "edgeWidth": 2,
     "vertexColor": "black",
     "edgeColor": "black",
     "backgroundColor": "white",
+    "borderColor": "black",
+    "borderWidth": "2",
 
     "repelStrength": -100,
     "gravityStrength": 0.03,
   }
 
-  var vertexColorLab = d3.lab(p.vertexColor);
-  var edgeColorLab = d3.lab(p.edgeColor);
-  var backgroundColorLab = d3.lab(p.backgroundColor);
-  _.merge(p, {
-    "vertexColorLab_l": vertexColorLab.l,
-    "vertexColorLab_a": vertexColorLab.a,
-    "vertexColorLab_b": vertexColorLab.b,
-    "edgeColorLab_l": edgeColorLab.l,
-    "edgeColorLab_a": edgeColorLab.a,
-    "edgeColorLab_b": edgeColorLab.b,
-    "backgroundColorLab_l": backgroundColorLab.l,
-    "backgroundColorLab_a": backgroundColorLab.a,
-    "backgroundColorLab_b": backgroundColorLab.b,
-  });
+  mergeLabColor(p, "vertexColor")
+  mergeLabColor(p, "edgeColor")
+  mergeLabColor(p, "backgroundColor")
+  mergeLabColor(p, "borderColor")
 
 
   //TODO: browser
   //TODO: screen resolution
-  //TODO: GML: https://de.wikipedia.org/wiki/Graph_Modelling_Language
+
+
+  var graph = gilbert(20, 0.1)
+
+  /*  var graph = {
+      "vertices": [{
+        "id": "Alice"
+      }, {
+        "id": "Bob"
+      }, {
+        "id": "Carol"
+      }],
+
+      "edges": [{
+        "source": "Alice",
+        "target": "Bob"
+      }, {
+        "source": "Bob",
+        "target": "Carol"
+      }],
+    };*/
+
+
+  styleSVG(p, d3.select("#graphsvg"))
+  layoutGraph(p, graph);
+  drawGraph(p, graph, d3.select("#vertexcircles"), d3.select("#edgelines"));
+  addGraphToParameters(p, graph);
+
+  generateHiddenInputs(p, d3.select("#parameter_inputs"));
+
+
+  ////////////////////////////////////////////////
+
+  function addGraphToParameters(p, graph) {
+    _.merge(p, {
+      "graph_gml": GML(graph)
+    });
+  }
+
+  function mergeLabColor(p, colorKey) {
+    var colorLab = d3.lab(p[colorKey]);
+    var pObject = {};
+    pObject[colorKey + "Lab_l"] = colorLab.l;
+    pObject[colorKey + "Lab_a"] = colorLab.a;
+    pObject[colorKey + "Lab_b"] = colorLab.b;
+    _.merge(p, pObject);
+  }
+
+  function styleSVG(p, svg) {
+    svg
+      .attr("width", p.width)
+      .attr("height", p.height)
+      .style("background-color", p.backgroundColor)
+      .style("border", p.borderWidth + "px solid " + p.borderColor);
+  }
+
+  function layoutGraph(p, graph) {
+    var simulation = d3.forceSimulation()
+      .force("center", d3.forceCenter(p.width / 2, p.height / 2))
+      .force("gravityx", d3.forceX(p.width / 2).strength(p.gravityStrength))
+      .force("gravityy", d3.forceY(p.height / 2).strength(p.gravityStrength))
+      .force("charge", d3.forceManyBody().strength(p.repelStrength))
+      .force("link", d3.forceLink().id(function(d) {
+        return d.id;
+      }))
+      .force("collide", d3.forceCollide(p.vertexRadius));
+
+    simulation.nodes(graph.vertices);
+    simulation.force("link").links(graph.edges);
+    simulation.stop();
+    while (simulation.alpha() >= simulation.alphaMin()) {
+      simulation.tick();
+    }
+    //TODO: high repel first, then configured?
+  }
+
+  function drawGraph(p, graph, vertexGroup, edgeGroup) {
+    vertexGroup
+      .selectAll("circle").data(graph.vertices).enter()
+      .append("circle")
+      .attr("r", p.vertexRadius)
+      .attr("cx", function(d) {
+        return d.x;
+      })
+      .attr("cy", function(d) {
+        return d.y;
+      })
+      .attr("fill", p.vertexColor)
+
+    edgeGroup.selectAll("line").data(graph.edges).enter()
+      .append("line")
+      .attr("x1", function(d) {
+        return d.source.x;
+      })
+      .attr("y1", function(d) {
+        return d.source.y;
+      })
+      .attr("x2", function(d) {
+        return d.target.x;
+      })
+      .attr("y2", function(d) {
+        return d.target.y;
+      })
+      .attr("stroke", p.edgeColor)
+      .attr("stroke-width", p.edgeWidth);
+  }
+
+
+  function generateHiddenInputs(p, inputSelection) {
+    // convert parameters to array to generate input fields with d3
+    var pdata = _.map(p, function(v, k) {
+      return {
+        "name": k,
+        "value": v
+      };
+    })
+
+    inputSelection.selectAll("input").data(pdata).enter()
+      .append("input")
+      .attr("type", "hidden")
+      .attr("name", function(d) {
+        return d.name;
+      })
+      .attr("value", function(d) {
+        return d.value;
+      });
+  }
 
   function gilbert(n, p) {
     var v = [];
     for (var i = 0; i < n; i++) {
       v.push({
-        "id": String(i)
+        "id": i
       });
     }
     var e = [];
@@ -53,8 +172,8 @@
       for (var j = i + 1; j < v.length; j++) {
         if (Math.random() <= p) {
           e.push({
-            "source": String(i),
-            "target": String(j)
+            "source": i,
+            "target": j
           });
         }
       }
@@ -65,89 +184,14 @@
     };
   }
 
-  var graph = gilbert(20, 0.1)
-
-  /*  var vertices = [{
-      "id": "Alice"
-    }, {
-      "id": "Bob"
-    }, {
-      "id": "Carol"
-    }];
-
-    var edges = [{
-      "source": "Alice",
-      "target": "Bob"
-    }, {
-      "source": "Bob",
-      "target": "Carol"
-    }];
-    */
-
-  d3.select("#graphsvg")
-    .attr("width", p.width)
-    .attr("height", p.height)
-    .style("background-color", p.backgroundColor)
-    .style("border", "1px solid black")
-
-  var simulation = d3.forceSimulation()
-    .force("center", d3.forceCenter(p.width / 2, p.height / 2))
-    .force("gravityx", d3.forceX(p.width / 2).strength(p.gravityStrength))
-    .force("gravityy", d3.forceY(p.height / 2).strength(p.gravityStrength))
-    .force("charge", d3.forceManyBody().strength(p.repelStrength))
-    .force("link", d3.forceLink().id(function(d) {
-      return d.id;
-    }))
-    .force("collide", d3.forceCollide(p.vertexRadius));
-
-  simulation.nodes(graph.vertices);
-  simulation.force("link").links(graph.edges);
-  simulation.stop();
-  while (simulation.alpha() >= simulation.alphaMin()) {
-    simulation.tick();
+  function GML(graph) {
+    // http://www.fim.uni-passau.de/fileadmin/files/lehrstuhl/brandenburg/projekte/gml/gml-technical-report.pdf
+    var nodes = _(graph.vertices).map(function(v) {
+      return "node [id " + v.id + " x " + v.x + " y " + v.y + "]";
+    }).join(" ");
+    var edges = _(graph.edges).map(function(e) {
+      return "edge [source " + e.source.id + " target " + e.target.id + "]";
+    }).join(" ");
+    return "graph [" + nodes + " " + edges + "]";
   }
-
-  d3.select("#vertexcircles").selectAll("circle").data(graph.vertices).enter()
-    .append("circle")
-    .attr("r", p.vertexRadius)
-    .attr("cx", function(d) {
-      return d.x;
-    })
-    .attr("cy", function(d) {
-      return d.y;
-    })
-    .attr("fill", p.vertexColor)
-
-  d3.select("#edgelines").selectAll("line").data(graph.edges).enter()
-    .append("line")
-    .attr("x1", function(d) {
-      return d.source.x;
-    })
-    .attr("y1", function(d) {
-      return d.source.y;
-    })
-    .attr("x2", function(d) {
-      return d.target.x;
-    })
-    .attr("y2", function(d) {
-      return d.target.y;
-    })
-    .attr("stroke", p.edgeColor);
-
-  var pdata = [];
-  for (var key in p) {
-    pdata.push({
-      "name": key,
-      "value": p[key]
-    });
-  }
-  d3.select("#parameter_inputs").selectAll("input").data(pdata).enter()
-    .append("input")
-    .attr("type", "hidden")
-    .attr("name", function(d) {
-      return d.name;
-    })
-    .attr("value", function(d) {
-      return d.value;
-    });
 </script>
