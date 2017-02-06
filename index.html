@@ -2,8 +2,6 @@
 <script src="https://cdn.jsdelivr.net/lodash/4.17.4/lodash.js"></script>
 
 <div id="graphs"> </div>
-
-
 <div id="parameter_inputs"></div>
 
 <script>
@@ -285,7 +283,8 @@ function detectBrowser() {
 
     return {
         "browser": browserName,
-        "browser_version": fullVersion
+        "browser_majorversion": majorVersion,
+        "browser_fullversion": fullVersion
     };
 }
 </script>
