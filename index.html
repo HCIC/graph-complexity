@@ -1,20 +1,14 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/4.5.0/d3.min.js"></script>
 <script src="https://cdn.jsdelivr.net/lodash/4.17.4/lodash.js"></script>
 
-<svg id="graphsvg">
-<g id="edgelines"></g>
-<g id="vertexcircles"></g>
-</svg>
-</br>
-<input name="complexity_slider" type="range" min="1" max="100" step="1" style="width:600px;">
-<div style="display:flex; justify-content:space-between; width: 600px;">
-  <div>simple </div>
-  <div> complex</div>
-</div>
+<div id="graphs"> </div>
+
+
 <div id="parameter_inputs"></div>
 
 <script>
-  var p = {
+
+var p = {
     "width": 600,
     "height": 600,
     "vertexRadius": 10,
@@ -34,65 +28,102 @@
     "screenAvailableWidth": screen.availWidth,
     "screenAvailableHeight": screen.availHeight,
     "devicePixelRatio": window.devicePixelRatio,
-  }
+};
 
-  mergeLabColor(p, "vertexColor")
-  mergeLabColor(p, "edgeColor")
-  mergeLabColor(p, "backgroundColor")
-  mergeLabColor(p, "borderColor")
-  _.merge(p, detectBrowser());
+mergeLabColor(p, "vertexColor")
+mergeLabColor(p, "edgeColor")
+mergeLabColor(p, "backgroundColor")
+mergeLabColor(p, "borderColor")
+_.merge(p, detectBrowser());
+
+var graphs = [
+    gilbert(d3.randomUniform(1, 25)(), 0.15),
+    newman(20, function() { return _.random(1, 4); }),
+];
+
+for( var g = 0; g < graphs.length; g++) {
+    var graph = graphs[g];
+    layoutGraph(p, graph);
+
+    var container = d3.select("#graphs").append("div")
+    drawGraph(p, graph, container);
+    container.append("br")
+    drawSlider(p, "graph_"+g+"_complexity", container)
+
+    addGraphToParameters(p, "graph_"+g+"_gml", graph);
+}
+
+generateHiddenInputs(p, d3.select("#parameter_inputs"));
 
 
-  //var graph = gilbert(d3.randomUniform(1, 25)(), 0.15)
-  var graph = newman(20, function() {
-    return _.random(1, 4);
-  })
+////////////////////////////////////////////////
 
-  styleSVG(p, d3.select("#graphsvg"))
-  layoutGraph(p, graph);
-  drawGraph(p, graph, d3.select("#vertexcircles"), d3.select("#edgelines"));
-  addGraphToParameters(p, graph);
+function addGraphToParameters(p, name, graph) {
+    var obj = {};
+    obj[name] = GML(graph);
+    _.merge(p, obj);
+}
 
-  generateHiddenInputs(p, d3.select("#parameter_inputs"));
-
-
-  ////////////////////////////////////////////////
-
-  function addGraphToParameters(p, graph) {
-    _.merge(p, {
-      "graph_gml": GML(graph),
-      "graph_vertexCount": graph.vertices.length,
-      "graph_edgeCount": graph.edges.length,
-    });
-  }
-
-  function mergeLabColor(p, colorKey) {
+function mergeLabColor(p, colorKey) {
     var colorLab = d3.lab(p[colorKey]);
     var pObject = {};
     pObject[colorKey + "Lab_l"] = colorLab.l;
     pObject[colorKey + "Lab_a"] = colorLab.a;
     pObject[colorKey + "Lab_b"] = colorLab.b;
     _.merge(p, pObject);
-  }
+}
 
-  function styleSVG(p, svg) {
-    svg
-      .attr("width", p.width)
-      .attr("height", p.height)
-      .style("background-color", p.backgroundColor)
-      .style("border", p.borderWidth + "px solid " + p.borderColor);
-  }
+function drawGraph(p, graph, container) {
+    var svg = container.append("svg")
+        .attr("width", p.width)
+        .attr("height", p.height)
+        .style("background-color", p.backgroundColor)
+        .style("border", p.borderWidth + "px solid " + p.borderColor);
 
-  function layoutGraph(p, graph) {
+    svg.append("g").selectAll("line").data(graph.edges).enter()
+        .append("line")
+        .attr("x1", function(d) { return d.source.x; })
+        .attr("y1", function(d) { return d.source.y; })
+        .attr("x2", function(d) { return d.target.x; })
+        .attr("y2", function(d) { return d.target.y; })
+        .attr("stroke", p.edgeColor)
+        .attr("stroke-width", p.edgeWidth);
+
+    svg.append("g").selectAll("circle").data(graph.vertices).enter()
+        .append("circle")
+        .attr("r", p.vertexRadius)
+        .attr("cx", function(d) { return d.x; })
+        .attr("cy", function(d) { return d.y; })
+        .attr("fill", p.vertexColor)
+}
+
+function drawSlider(p, name, container) {
+    var slider = container.append("input").attr("type", "range")
+        .attr("name", name)
+        .attr("min", 1)
+        .attr("max", 100)
+        .attr("step", 0.01)
+        .attr("value", 50)
+        .style("width", p.width+"px")
+
+    var labels = container.append("div")
+        .style("display", "flex")
+        .style("justify-content", "space-between")
+        .style("width", p.width+"px")
+        .style("margin-bottom", "100px")
+
+    labels.append("div").text("simple")
+    labels.append("div").text("complex")
+}
+
+function layoutGraph(p, graph) {
     var simulation = d3.forceSimulation()
-      .force("center", d3.forceCenter(p.width / 2, p.height / 2))
-      .force("gravityx", d3.forceX(p.width / 2).strength(p.gravityStrength))
-      .force("gravityy", d3.forceY(p.height / 2).strength(p.gravityStrength))
-      .force("repel", d3.forceManyBody().strength(p.repelStrength))
-      .force("link", d3.forceLink().id(function(d) {
-        return d.id;
-      }).distance(p.linkDistance))
-      .force("collide", d3.forceCollide(p.vertexRadius));
+        .force("center", d3.forceCenter(p.width / 2, p.height / 2))
+        .force("gravityx", d3.forceX(p.width / 2).strength(p.gravityStrength))
+        .force("gravityy", d3.forceY(p.height / 2).strength(p.gravityStrength))
+        .force("repel", d3.forceManyBody().strength(p.repelStrength))
+        .force("link", d3.forceLink().id(function(d) { return d.id; }).distance(p.linkDistance))
+        .force("collide", d3.forceCollide(p.vertexRadius));
 
     simulation.nodes(graph.vertices);
     simulation.force("link").links(graph.edges);
@@ -106,154 +137,95 @@
     converge()
 
     function converge() {
-      simulation.alpha(1);
-      while (simulation.alpha() >= simulation.alphaMin()) {
-        simulation.tick();
-      }
+        simulation.alpha(1);
+        while (simulation.alpha() >= simulation.alphaMin()) {
+            simulation.tick();
+        }
     }
-  }
-
-  function drawGraph(p, graph, vertexGroup, edgeGroup) {
-    vertexGroup
-      .selectAll("circle").data(graph.vertices).enter()
-      .append("circle")
-      .attr("r", p.vertexRadius)
-      .attr("cx", function(d) {
-        return d.x;
-      })
-      .attr("cy", function(d) {
-        return d.y;
-      })
-      .attr("fill", p.vertexColor)
-
-    edgeGroup.selectAll("line").data(graph.edges).enter()
-      .append("line")
-      .attr("x1", function(d) {
-        return d.source.x;
-      })
-      .attr("y1", function(d) {
-        return d.source.y;
-      })
-      .attr("x2", function(d) {
-        return d.target.x;
-      })
-      .attr("y2", function(d) {
-        return d.target.y;
-      })
-      .attr("stroke", p.edgeColor)
-      .attr("stroke-width", p.edgeWidth);
-  }
+}
 
 
-  function generateHiddenInputs(p, inputSelection) {
+function generateHiddenInputs(p, inputSelection) {
     // convert parameters to array to generate input fields with d3
-    var pdata = _.map(p, function(v, k) {
-      return {
-        "name": k,
-        "value": v
-      };
-    })
+    var pdata = _.map(p, function(v, k) { return { "name": k, "value": v }; })
 
     inputSelection.selectAll("input").data(pdata).enter()
-      .append("input")
-      .attr("type", "hidden")
-      .attr("name", function(d) {
-        return d.name;
-      })
-      .attr("value", function(d) {
-        return d.value;
-      });
-  }
+        .append("input")
+        .attr("type", "hidden")
+        .attr("name", function(d) { return d.name; })
+        .attr("value", function(d) { return d.value; });
+}
 
-  function gilbert(n, p) {
+function gilbert(n, p) {
     var v = [];
     for (var i = 0; i < n; i++) {
-      v.push({
-        "id": i
-      });
+        v.push({ "id": i });
     }
     var e = [];
     for (var i = 0; i < v.length; i++) {
-      for (var j = i + 1; j < v.length; j++) {
-        if (Math.random() <= p) {
-          e.push({
-            "source": i,
-            "target": j
-          });
+        for (var j = i + 1; j < v.length; j++) {
+            if (Math.random() <= p) {
+                e.push({ "source": i, "target": j });
+            }
         }
-      }
     }
-    return {
-      "vertices": v,
-      "edges": e,
-    };
-  }
+    return { "vertices": v, "edges": e, };
+}
 
-  function randomIndex(n) {
+function randomIndex(n) {
     return _.random(0, n - 1);
-  }
+}
 
-  function randomElement(arr) {
+function randomElement(arr) {
     return arr[randomIndex(arr.length)];
-  }
+}
 
-  function newman(n, degp) {
+function newman(n, degp) {
     var vertices = _.times(n, function(i) {
-      return {
-        "id": i,
-        "openstubs": degp(),
-      };
+        return { "id": i, "openstubs": degp(), };
     });
     while (_.sumBy(vertices, 'openstubs') % 2 == 1) {
-      vertices[randomIndex(n)].openstubs = degp();
+        vertices[randomIndex(n)].openstubs = degp();
     }
     var edgeCount = _.sumBy(vertices, 'openstubs') / 2;
     var edges = [];
     for (var i = 0; i < edgeCount; i++) {
-      var candidates = _.filter(vertices, function(v) {
-        return v.openstubs > 0;
-      });
-      if (candidates.length == 1) {
-        //TODO:
-        console.warn("cannot create more edges. Only one vertex left", candidates);
-        break;
-      }
-      var source = randomElement(candidates);
-      var target;
-      do {
-        target = randomElement(candidates);
-      } while (target.id == source.id);
-      source.openstubs -= 1;
-      target.openstubs -= 1;
-      edges.push({
-        "source": source.id,
-        "target": target.id,
-      });
+        var candidates = _.filter(vertices, function(v) {
+            return v.openstubs > 0;
+        });
+        if (candidates.length == 1) {
+            //TODO:
+            console.warn("cannot create more edges. Only one vertex left", candidates);
+            break;
+        }
+        var source = randomElement(candidates);
+        var target;
+        do {
+            target = randomElement(candidates);
+        } while (target.id == source.id);
+        source.openstubs -= 1;
+        target.openstubs -= 1;
+        edges.push({ "source": source.id, "target": target.id, });
     }
     // remove openstubs fields
     vertices = _.map(vertices, function(v) {
-      return {
-        "id": v.id
-      };
+        return { "id": v.id };
     })
-    return {
-      "vertices": vertices,
-      "edges": edges,
-    };
-  }
+    return { "vertices": vertices, "edges": edges, };
+}
 
-  function GML(graph) {
+function GML(graph) {
     // http://www.fim.uni-passau.de/fileadmin/files/lehrstuhl/brandenburg/projekte/gml/gml-technical-report.pdf
     var nodes = _(graph.vertices).map(function(v) {
-      return "node [id " + v.id + " x " + v.x + " y " + v.y + "]";
+        return "node [id " + v.id + " x " + v.x + " y " + v.y + "]";
     }).join(" ");
     var edges = _(graph.edges).map(function(e) {
-      return "edge [source " + e.source.id + " target " + e.target.id + "]";
+        return "edge [source " + e.source.id + " target " + e.target.id + "]";
     }).join(" ");
     return "graph [" + nodes + " " + edges + "]";
-  }
+}
 
-  function detectBrowser() {
+function detectBrowser() {
     var nVer = navigator.appVersion;
     var nAgt = navigator.userAgent;
     var browserName = navigator.appName;
@@ -263,57 +235,57 @@
 
     // In Opera, the true version is after "Opera" or after "Version"
     if ((verOffset = nAgt.indexOf("Opera")) != -1) {
-      browserName = "Opera";
-      fullVersion = nAgt.substring(verOffset + 6);
-      if ((verOffset = nAgt.indexOf("Version")) != -1)
-        fullVersion = nAgt.substring(verOffset + 8);
+        browserName = "Opera";
+        fullVersion = nAgt.substring(verOffset + 6);
+        if ((verOffset = nAgt.indexOf("Version")) != -1)
+            fullVersion = nAgt.substring(verOffset + 8);
     }
     // In MSIE, the true version is after "MSIE" in userAgent
     else if ((verOffset = nAgt.indexOf("MSIE")) != -1) {
-      browserName = "Microsoft Internet Explorer";
-      fullVersion = nAgt.substring(verOffset + 5);
+        browserName = "Microsoft Internet Explorer";
+        fullVersion = nAgt.substring(verOffset + 5);
     }
-    // In Chrome, the true version is after "Chrome" 
+    // In Chrome, the true version is after "Chrome"
     else if ((verOffset = nAgt.indexOf("Chrome")) != -1) {
-      browserName = "Chrome";
-      fullVersion = nAgt.substring(verOffset + 7);
+        browserName = "Chrome";
+        fullVersion = nAgt.substring(verOffset + 7);
     }
-    // In Safari, the true version is after "Safari" or after "Version" 
+    // In Safari, the true version is after "Safari" or after "Version"
     else if ((verOffset = nAgt.indexOf("Safari")) != -1) {
-      browserName = "Safari";
-      fullVersion = nAgt.substring(verOffset + 7);
-      if ((verOffset = nAgt.indexOf("Version")) != -1)
+        browserName = "Safari";
+        fullVersion = nAgt.substring(verOffset + 7);
+        if ((verOffset = nAgt.indexOf("Version")) != -1)
+            fullVersion = nAgt.substring(verOffset + 8);
+    }
+    // In Firefox, the true version is after "Firefox"
+    else if ((verOffset = nAgt.indexOf("Firefox")) != -1) {
+        browserName = "Firefox";
         fullVersion = nAgt.substring(verOffset + 8);
     }
-    // In Firefox, the true version is after "Firefox" 
-    else if ((verOffset = nAgt.indexOf("Firefox")) != -1) {
-      browserName = "Firefox";
-      fullVersion = nAgt.substring(verOffset + 8);
-    }
-    // In most other browsers, "name/version" is at the end of userAgent 
+    // In most other browsers, "name/version" is at the end of userAgent
     else if ((nameOffset = nAgt.lastIndexOf(' ') + 1) <
-      (verOffset = nAgt.lastIndexOf('/'))) {
-      browserName = nAgt.substring(nameOffset, verOffset);
-      fullVersion = nAgt.substring(verOffset + 1);
-      if (browserName.toLowerCase() == browserName.toUpperCase()) {
-        browserName = navigator.appName;
-      }
+        (verOffset = nAgt.lastIndexOf('/'))) {
+        browserName = nAgt.substring(nameOffset, verOffset);
+        fullVersion = nAgt.substring(verOffset + 1);
+        if (browserName.toLowerCase() == browserName.toUpperCase()) {
+            browserName = navigator.appName;
+        }
     }
     // trim the fullVersion string at semicolon/space if present
     if ((ix = fullVersion.indexOf(";")) != -1)
-      fullVersion = fullVersion.substring(0, ix);
+        fullVersion = fullVersion.substring(0, ix);
     if ((ix = fullVersion.indexOf(" ")) != -1)
-      fullVersion = fullVersion.substring(0, ix);
+        fullVersion = fullVersion.substring(0, ix);
 
     majorVersion = parseInt('' + fullVersion, 10);
     if (isNaN(majorVersion)) {
-      fullVersion = '' + parseFloat(navigator.appVersion);
-      majorVersion = parseInt(navigator.appVersion, 10);
+        fullVersion = '' + parseFloat(navigator.appVersion);
+        majorVersion = parseInt(navigator.appVersion, 10);
     }
 
     return {
-      "browser": browserName,
-      "browser_version": fullVersion
+        "browser": browserName,
+        "browser_version": fullVersion
     };
-  }
+}
 </script>
