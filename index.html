@@ -34,9 +34,6 @@ _.merge(columns, detectBrowser());
 
 var graphs = [
     {
-        "graph":gilbert(_.random(1, 20), Math.random() * 0.5),
-    },
-    {
         "graph":newman(_.random(1, 20), function() { return _.random(1, 4); }),
     },
     {
@@ -44,6 +41,9 @@ var graphs = [
     },
     {
         "graph":newman(_.random(1, 20), function() { return _.random(1, 4); }),
+    },
+    {
+        "graph":gilbert(_.random(1, 20), Math.random() * 0.5),
     },
     {
         "graph":gilbert(d3.randomUniform(1, 10)(), 0.3),
@@ -238,7 +238,7 @@ function newman(n, degp) {
 function GML(graph) {
     // http://www.fim.uni-passau.de/fileadmin/files/lehrstuhl/brandenburg/projekte/gml/gml-technical-report.pdf
     var nodes = _(graph.vertices).map(function(v) {
-        return "node [id " + v.id + " x " + v.x + " y " + v.y + "]";
+        return "node [id " + v.id + " x " + Math.round(v.x) + " y " + Math.round(v.y) + "]";
     }).join(" ");
     var edges = _(graph.edges).map(function(e) {
         return "edge [source " + e.source.id + " target " + e.target.id + "]";
