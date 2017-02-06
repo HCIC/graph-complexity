@@ -1,14 +1,15 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/4.5.0/d3.min.js"></script>
-<script src="https://cdn.jsdelivr.net/lodash/4.17.4/lodash.js"></script>
+<script src="https://cdn.jsdelivr.net/lodash/4.17.4/lodash.min.js"></script>
 
+<div class="col-sm-8 col-sm-offset-2">
 <div id="graphs"> </div>
-<div id="parameter_inputs"></div>
+<div id="columns"></div>
+</div>
 
 <script>
-
-var p = {
-    "width": 600,
-    "height": 600,
+var defaultProperties = {
+    "width": 400,
+    "height": 400,
     "vertexRadius": 10,
     "edgeWidth": 2,
     "vertexColor": "black",
@@ -17,58 +18,64 @@ var p = {
     "borderColor": "black",
     "borderWidth": 2,
 
-    "repelStrength": -100,
-    "linkDistance": 50,
-    "gravityStrength": 0.03,
+    "repelStrength": -70,
+    "linkDistance": 30,
+    "gravityStrength": 0.04,
+}
 
+var columns = {
     "screenWidth": screen.width,
     "screenHeight": screen.height,
     "screenAvailableWidth": screen.availWidth,
     "screenAvailableHeight": screen.availHeight,
     "devicePixelRatio": window.devicePixelRatio,
 };
-
-mergeLabColor(p, "vertexColor")
-mergeLabColor(p, "edgeColor")
-mergeLabColor(p, "backgroundColor")
-mergeLabColor(p, "borderColor")
-_.merge(p, detectBrowser());
+_.merge(columns, detectBrowser());
 
 var graphs = [
-    gilbert(d3.randomUniform(1, 25)(), 0.15),
-    newman(20, function() { return _.random(1, 4); }),
+    {
+        "graph":gilbert(_.random(1, 20), Math.random() * 0.5),
+    },
+    {
+        "graph":newman(_.random(1, 20), function() { return _.random(1, 4); }),
+    },
+    {
+        "graph":gilbert(_.random(10, 20), 0.15),
+    },
+    {
+        "graph":newman(_.random(1, 20), function() { return _.random(1, 4); }),
+    },
+    {
+        "graph":gilbert(d3.randomUniform(1, 10)(), 0.3),
+    },
 ];
 
 for( var g = 0; g < graphs.length; g++) {
-    var graph = graphs[g];
-    layoutGraph(p, graph);
+    var properties = {};
+    _.merge(properties, defaultProperties, graphs[g]);
+
+    var graph = properties.graph;
+    layoutGraph(properties, graph);
 
     var container = d3.select("#graphs").append("div")
-    drawGraph(p, graph, container);
+    drawGraph(properties, graph, container);
     container.append("br")
-    drawSlider(p, "graph_"+g+"_complexity", container)
+    addSlider(properties, "graph"+g+"_complexity", "simple", "complex", container)
+    addSlider(properties, "graph"+g+"_beauty", "ugly", "beautiful", container)
+    container.style("margin-bottom", "100px")
 
-    addGraphToParameters(p, "graph_"+g+"_gml", graph);
+    addGraphToColumns(columns, properties, "graph"+g+"_", graph);
 }
 
-generateHiddenInputs(p, d3.select("#parameter_inputs"));
+generateHiddenInputs(columns, d3.select("#columns"));
 
 
 ////////////////////////////////////////////////
 
-function addGraphToParameters(p, name, graph) {
-    var obj = {};
-    obj[name] = GML(graph);
-    _.merge(p, obj);
-}
-
-function mergeLabColor(p, colorKey) {
-    var colorLab = d3.lab(p[colorKey]);
-    var pObject = {};
-    pObject[colorKey + "Lab_l"] = colorLab.l;
-    pObject[colorKey + "Lab_a"] = colorLab.a;
-    pObject[colorKey + "Lab_b"] = colorLab.b;
-    _.merge(p, pObject);
+function addGraphToColumns(columns, p, prefix, graph) {
+    p["graph"] = GML(p.graph);
+    var prefixed = _.mapKeys(p, function(v,k) {return prefix + k;});
+    _.merge(columns, prefixed);
 }
 
 function drawGraph(p, graph, container) {
@@ -95,23 +102,23 @@ function drawGraph(p, graph, container) {
         .attr("fill", p.vertexColor)
 }
 
-function drawSlider(p, name, container) {
+function addSlider(p, name, lowLabel, highLabel, container) {
     var slider = container.append("input").attr("type", "range")
         .attr("name", name)
-        .attr("min", 1)
-        .attr("max", 100)
-        .attr("step", 0.01)
-        .attr("value", 50)
+        .attr("min", 0)
+        .attr("max", 1)
+        .attr("step", 0.0001)
+        .attr("value", 0.5)
         .style("width", p.width+"px")
+        .style("margin-top", "20px")
 
     var labels = container.append("div")
         .style("display", "flex")
         .style("justify-content", "space-between")
         .style("width", p.width+"px")
-        .style("margin-bottom", "100px")
 
-    labels.append("div").text("simple")
-    labels.append("div").text("complex")
+    labels.append("div").text(lowLabel)
+    labels.append("div").text(highLabel)
 }
 
 function layoutGraph(p, graph) {
@@ -142,10 +149,26 @@ function layoutGraph(p, graph) {
     }
 }
 
+function addLabValuesForColors(p) {
+    StringEndsWithPolyfill();
+    for( key in p ) {
+        if(key.endsWith("color") || key.endsWith("Color")) {
+            var colorLab = d3.lab(p[key]);
+            p[key + "LabL"] = colorLab.l;
+            p[key + "LabA"] = colorLab.a;
+            p[key + "LabB"] = colorLab.b;
+        }
+    }
+}
 
 function generateHiddenInputs(p, inputSelection) {
+    addLabValuesForColors(p)
+
     // convert parameters to array to generate input fields with d3
-    var pdata = _.map(p, function(v, k) { return { "name": k, "value": v }; })
+    var pdata = _.map(p, function(v, k) {
+        var obj = { "name": k, "value": v };
+        return obj;
+    });
 
     inputSelection.selectAll("input").data(pdata).enter()
         .append("input")
@@ -167,7 +190,7 @@ function gilbert(n, p) {
             }
         }
     }
-    return { "vertices": v, "edges": e, };
+    return { "vertices": v, "edges": e };
 }
 
 function randomIndex(n) {
@@ -287,4 +310,107 @@ function detectBrowser() {
         "browser_fullversion": fullVersion
     };
 }
+
+function StringEndsWithPolyfill() {
+    if (!String.prototype.endsWith) {
+        String.prototype.endsWith = function(searchString, position) {
+            var subjectString = this.toString();
+            if (typeof position !== 'number' || !isFinite(position) || Math.floor(position) !== position || position > subjectString.length) {
+                position = subjectString.length;
+            }
+            position -= searchString.length;
+            var lastIndex = subjectString.lastIndexOf(searchString, position);
+            return lastIndex !== -1 && lastIndex === position;
+        };
+    }
+}
 </script>
+
+<style type="text/css">
+    /* http://danielstern.ca/range.css/#/ */
+input[type=range] {
+  -webkit-appearance: none;
+  width: 100%;
+  margin: 13.8px 0;
+}
+input[type=range]:focus {
+  outline: none;
+}
+input[type=range]::-webkit-slider-runnable-track {
+  width: 100%;
+  height: 11.4px;
+  cursor: pointer;
+  box-shadow: 0px 0px 0px #000000, 0px 0px 0px #0d0d0d;
+  background: #646464;
+  border-radius: 0px;
+  border: 0px solid #010101;
+}
+input[type=range]::-webkit-slider-thumb {
+  box-shadow: 0px 0px 0px #000031, 0px 0px 0px #00004b;
+  border: 2px solid #00001e;
+  height: 39px;
+  width: 26px;
+  border-radius: 7px;
+  background: #ffffff;
+  cursor: pointer;
+  -webkit-appearance: none;
+  margin-top: -13.8px;
+}
+input[type=range]:focus::-webkit-slider-runnable-track {
+  background: #a1a1a1;
+}
+input[type=range]::-moz-range-track {
+  width: 100%;
+  height: 11.4px;
+  cursor: pointer;
+  box-shadow: 0px 0px 0px #000000, 0px 0px 0px #0d0d0d;
+  background: #646464;
+  border-radius: 0px;
+  border: 0px solid #010101;
+}
+input[type=range]::-moz-range-thumb {
+  box-shadow: 0px 0px 0px #000031, 0px 0px 0px #00004b;
+  border: 2px solid #00001e;
+  height: 39px;
+  width: 26px;
+  border-radius: 7px;
+  background: #ffffff;
+  cursor: pointer;
+}
+input[type=range]::-ms-track {
+  width: 100%;
+  height: 11.4px;
+  cursor: pointer;
+  background: transparent;
+  border-color: transparent;
+  color: transparent;
+}
+input[type=range]::-ms-fill-lower {
+  background: #272727;
+  border: 0px solid #010101;
+  border-radius: 0px;
+  box-shadow: 0px 0px 0px #000000, 0px 0px 0px #0d0d0d;
+}
+input[type=range]::-ms-fill-upper {
+  background: #646464;
+  border: 0px solid #010101;
+  border-radius: 0px;
+  box-shadow: 0px 0px 0px #000000, 0px 0px 0px #0d0d0d;
+}
+input[type=range]::-ms-thumb {
+  box-shadow: 0px 0px 0px #000031, 0px 0px 0px #00004b;
+  border: 2px solid #00001e;
+  height: 39px;
+  width: 26px;
+  border-radius: 7px;
+  background: #ffffff;
+  cursor: pointer;
+  height: 11.4px;
+}
+input[type=range]:focus::-ms-fill-lower {
+  background: #646464;
+}
+input[type=range]:focus::-ms-fill-upper {
+  background: #a1a1a1;
+}
+</style>
