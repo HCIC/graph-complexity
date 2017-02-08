@@ -13,17 +13,17 @@
 var defaultProperties = {
     "width": 400,
     "height": 400,
-    "vertexRadius": 10,
-    "edgeWidth": 2,
+    "vertexRadius": 5,
+    "edgeWidth": 1,
     "vertexColor": "black",
     "edgeColor": "black",
     "backgroundColor": "white",
     "borderColor": "black",
     "borderWidth": 2,
 
-    "repelStrength": -70,
-    "linkDistance": 30,
-    "gravityStrength": 0.04,
+    "repelStrength": -1500,
+    "linkDistance": 10,
+    "gravityStrength": 0.05,
 }
 
 var columns = {
@@ -37,20 +37,29 @@ _.merge(columns, detectBrowser());
 
 var graphs = [
     {
-        "graph":newman(_.random(1, 20), function() { return _.random(1, 4); }),
+        "graph":newman(_.random(10,100), function() { return Math.ceil(d3.randomExponential(0.4)()); }),
     },
     {
-        "graph":gilbert(_.random(10, 20), 0.15),
+        "graph":newman(_.random(10,100), function() { return Math.ceil(d3.randomExponential(0.4)()); }),
     },
     {
-        "graph":newman(_.random(1, 20), function() { return _.random(1, 4); }),
+        "graph":newman(_.random(10,100), function() { return Math.ceil(d3.randomExponential(0.4)()); }),
     },
     {
-        "graph":gilbert(_.random(1, 20), Math.random() * 0.5),
+        "graph":newman(_.random(10,100), function() { return Math.ceil(d3.randomExponential(0.4)()); }),
     },
     {
-        "graph":gilbert(d3.randomUniform(1, 10)(), 0.3),
+        "graph":newman(_.random(10,100), function() { return Math.ceil(d3.randomExponential(0.4)()); }),
     },
+    // {
+    //     "graph":newman(_.random(1, 20), function() { return _.random(1, 4); }),
+    // },
+    // {
+    //     "graph":gilbert(_.random(1, 20), Math.random() * 0.5),
+    // },
+    // {
+    //     "graph":gilbert(d3.randomUniform(1, 10)(), 0.3),
+    // },
 ];
 
 for( var g = 0; g < graphs.length; g++) {
@@ -58,6 +67,7 @@ for( var g = 0; g < graphs.length; g++) {
     _.merge(properties, defaultProperties, graphs[g]);
 
     var graph = properties.graph;
+    properties["repelStrength"] = properties.repelStrength / graph.vertices.length
     layoutGraph(properties, graph);
 
     var container = d3.select("#graphs").append("div")
@@ -139,8 +149,9 @@ function layoutGraph(p, graph) {
 
     simulation.force("repel").strength(-10000);
     converge()
-    converge()
+    // converge()
     simulation.force("repel").strength(p.repelStrength);
+    // converge()
     converge()
     converge()
 

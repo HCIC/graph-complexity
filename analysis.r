@@ -75,7 +75,11 @@ getGraph <- function(graphString){
 graphMetrics <- function (d) {
   library(igraph)
   library(QuACN)
+  # https://stackoverflow.com/questions/11308754/add-multiple-columns-to-r-data-table-in-one-function-call
 
+
+
+  # d[, c("vertexCount","edgeCount"
   # metrics <-
 
   # d <- within(d, graph_edgeCount <- sapply(graph_graph,FUN=function(g){ length(E(getGraph(g))) } ))
@@ -116,20 +120,22 @@ library(ggplot2)
 library(plotly)
 
 # plot_ly(d, x= ~graph_diameter, y=~graph_vertexCount, z=~graph_complexity, color=~graph_beauty, size = ~WorkTimeInSeconds)
+plot_ly(d) %>%
+  add_trace(type = 'scatter', x = ~graph_vertexCount, y = ~graph_edgeCount)
 
 plot_ly(d) %>%
   # add_trace(type = 'scatter', x = ~graph_vertexCount, name = "vertexCount", y = ~graph_complexity) %>%
   #  add_trace(type = 'scatter', x = ~graph_edgeCount, name = "edgeCount", y = ~graph_complexity) %>%
-  # add_trace(type = 'scatter', x = ~graph_diameter, name = "diameter", y = ~graph_complexity) %>%
+  add_trace(type = 'scatter', x = ~graph_diameter, name = "diameter", y = ~graph_complexity) %>%
   # add_trace(type = 'scatter', x = ~graph_adhesion, name = "adhesion", y = ~graph_complexity) %>%
   # add_trace(type = 'scatter', x = ~graph_cohesion, name = "cohesion", y = ~graph_complexity) %>%
   # add_trace(type = 'scatter', x = ~graph_componentCount, name = "components", y = ~graph_complexity) %>%
   # add_trace(type = 'scatter', x = ~graph_triangleCount, name = "triangles", y = ~graph_complexity) %>%
-  # add_trace(type = 'scatter', x = ~graph_energy, name = "energy", y = ~graph_complexity) %>%
-  # add_trace(type = 'scatter', x = ~graph_topologicalInfoContent, name = "topoloInfoContent", y = ~graph_complexity) %>%
-  # add_trace(type = 'scatter', x = ~graph_bertz, name = "bertz", y = ~graph_complexity) %>%
+  add_trace(type = 'scatter', x = ~graph_energy, name = "energy", y = ~graph_complexity) %>%
+  add_trace(type = 'scatter', x = ~graph_topologicalInfoContent, name = "topoloInfoContent", y = ~graph_complexity) %>%
+  add_trace(type = 'scatter', x = ~graph_bertz, name = "bertz", y = ~graph_complexity) %>%
   # add_trace(type = 'scatter', x = ~graph_complexityIndexB, name = "complexityIndexB", y = ~graph_complexity) %>%
-  # add_trace(type = 'scatter', x = ~graph_compactness, name = "compactness", y = ~graph_complexity) %>%
+  add_trace(type = 'scatter', x = ~graph_compactness, name = "compactness", y = ~graph_complexity) %>%
   # add_trace(type = 'scatter', x = ~graph_symmetryIndex, name = "symmetryIndex", y = ~graph_complexity) %>%
   # add_trace(type = 'scatter', x = ~graph_efficiency, name = "efficiency", y = ~graph_complexity) %>%
   add_trace(type = 'scatter', x = ~graph_spectralRadius, name = "spectralRadius", y = ~graph_complexity) %>%
@@ -139,6 +145,7 @@ plot_ly(d) %>%
 
 cor(d$graph_vertexCount,d$graph_complexity)
 cor(d$graph_edgeCount, d$graph_complexity)
+
 
 summary(lm(d$graph_complexity ~
              d$graph_vertexCount +
@@ -150,6 +157,7 @@ summary(lm(d$graph_complexity ~
              # d$graph_triangleCount +
              d$graph_energy +
              d$graph_topologicalInfoContent +
+             d$graph_bertz +
              d$graph_spectralRadius
              # d$graph_complexityIndexB
              # d$graph_compactness
