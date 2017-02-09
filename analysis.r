@@ -16,11 +16,14 @@ if(FALSE){
 loadData <- function() {
   library(tidyr)
   library(dplyr)
-  data <- merge(
+  library(scales)
+  data <- merge(merge(
     read.csv(file = "~/projects/graph-complexity/batch1.csv", header=TRUE),
     read.csv(file = "~/projects/graph-complexity/batch2.csv", header=TRUE),
     all=TRUE
-  )
+  ),
+    read.csv(file = "~/projects/graph-complexity/batch3.csv", header=TRUE),
+    all=TRUE)
 
 
   subdata <- data[,c(16,24,28,29,34,35,36:174)]
@@ -44,10 +47,6 @@ loadData <- function() {
   d <- na.omit(newdata)
   d
 }
-
-
-# Daten laden
-d <- loadData()
 
 
 getGraph <- function(graphString){
@@ -79,8 +78,11 @@ graphMetrics <- function (d) {
 
 
 
-  # d[, c("vertexCount","edgeCount"
-  # metrics <-
+  # d[, c("vertexCount","edgeCount") :=
+  metrics <- c(
+      c("vertexCount", function(graph){length(V(graph))} ),
+      c("edgeCount", function(graph){length(E(graph))} )
+    )
 
   # d <- within(d, graph_edgeCount <- sapply(graph_graph,FUN=function(g){ length(E(getGraph(g))) } ))
   d$graph_edgeCount <- sapply(d$graph_graph,FUN=function(g){ length(E(getGraph(g))) } )
@@ -112,6 +114,9 @@ graphMetrics <- function (d) {
   d
 }
 
+
+
+d <- loadData()
 d <- graphMetrics(d)
 
 
@@ -121,7 +126,14 @@ library(plotly)
 
 # plot_ly(d, x= ~graph_diameter, y=~graph_vertexCount, z=~graph_complexity, color=~graph_beauty, size = ~WorkTimeInSeconds)
 plot_ly(d) %>%
-  add_trace(type = 'scatter', x = ~graph_vertexCount, y = ~graph_edgeCount)
+  add_trace( x = ~graph_vertexCount, y = ~graph_edgeCount, color = ~graph_complexity) %>%
+  # add_trace(type = 'scatter', x = ~graph_vertexCount, y = ~graph_topologicalInfoContent) %>%
+  add_trace()
+
+hist(d$graph_complexity)
+hist(d$graph_topologicalInfoContent)
+plot_ly(d) %>% add_trace(type = 'scatter', x = ~graph_topologicalInfoContent, name = "topoloInfoContent", y = ~graph_complexity, color = ~graph_vertexCount)
+plot_ly(d) %>% add_trace(type = 'scatter', x = ~graph_topologicalInfoContent, name = "topoloInfoContent", y = ~graph_diameter, color = ~graph_vertexCount)
 
 plot_ly(d) %>%
   # add_trace(type = 'scatter', x = ~graph_vertexCount, name = "vertexCount", y = ~graph_complexity) %>%
@@ -158,7 +170,12 @@ summary(lm(d$graph_complexity ~
              d$graph_energy +
              d$graph_topologicalInfoContent +
              d$graph_bertz +
-             d$graph_spectralRadius
+             d$graph_spectralRadius +
+             d$Answer.Gender +
+             d$Answer.age +
+             d$exp1 +
+             d$exp2 +
+             d$Answer.distracted
              # d$graph_complexityIndexB
              # d$graph_compactness
              # d$graph_symmetryIndex
