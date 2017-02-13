@@ -3,6 +3,7 @@ if(FALSE){
   install.packages("tidyr")
   install.packages("dplyr")
   install.packages("uuid")
+  install.packages("lme4")
 
   install.packages("ggplot2")
   install.packages("plotly")
@@ -12,6 +13,28 @@ if(FALSE){
   biocLite("RBGL")
   install.packages("QuACN")
 }
+
+getGraph <- function(graphString){
+  library(igraph)
+  library(uuid)
+
+  #  characters <- as.character(graphString)
+  filename <- paste("/tmp/", UUIDgenerate(), "temp.gml", sep = "")
+  write(as.character(graphString), file=filename)
+  graph <- as.undirected(read_graph(filename, format="gml"), mode="collapse")
+  file.remove(filename)
+
+
+  # https://github.com/igraph/rigraph/issues/154
+  graph <- delete_vertex_attr(graph, "x")
+  graph <- delete_vertex_attr(graph, "y")
+
+  edges <- which_multiple(graph, eids = E(graph))
+  es <- E(graph)[edges]
+  graph <- delete_edges(graph, es)
+  graph
+}
+
 
 loadData <- function() {
   library(tidyr)
@@ -45,30 +68,12 @@ loadData <- function() {
 
   newdata$pred = abs( 7 - newdata$exp2 - newdata$exp1 ) + newdata$Answer.distracted
   d <- na.omit(newdata)
+  onlyOneComponent <- Vectorize(function(g) {count_components(getGraph(g), mode = "weak") == 1})
+  d <- filter(d, onlyOneComponent(d$graph_graph))
   d
 }
 
 
-getGraph <- function(graphString){
-  library(igraph)
-  library(uuid)
-
-  #  characters <- as.character(graphString)
-  filename <- paste("/tmp/", UUIDgenerate(), "temp.gml", sep = "")
-  write(as.character(graphString), file=filename)
-  graph <- as.undirected(read_graph(filename, format="gml"), mode="collapse")
-  file.remove(filename)
-
-
-  # https://github.com/igraph/rigraph/issues/154
-  graph <- delete_vertex_attr(graph, "x")
-  graph <- delete_vertex_attr(graph, "y")
-
-  edges <- which_multiple(graph, eids = E(graph))
-  es <- E(graph)[edges]
-  graph <- delete_edges(graph, es)
-  graph
-}
 
 
 graphMetrics <- function (d) {
@@ -79,10 +84,10 @@ graphMetrics <- function (d) {
 
 
   # d[, c("vertexCount","edgeCount") :=
-  metrics <- c(
-      c("vertexCount", function(graph){length(V(graph))} ),
-      c("edgeCount", function(graph){length(E(graph))} )
-    )
+  # metrics <- c(
+  #     c("vertexCount", function(graph){length(V(graph))} ),
+  #     c("edgeCount", function(graph){length(E(graph))} )
+  #   )
 
   # d <- within(d, graph_edgeCount <- sapply(graph_graph,FUN=function(g){ length(E(getGraph(g))) } ))
   d$graph_edgeCount <- sapply(d$graph_graph,FUN=function(g){ length(E(getGraph(g))) } )
@@ -102,10 +107,24 @@ graphMetrics <- function (d) {
   d$graph_energy <- sapply(d$graph_graph,FUN=function(g){ energy(as_graphnel(getGraph(g)))  } )
   d$graph_compactness <- sapply(d$graph_graph,FUN=function(g){ compactness(as_graphnel(getGraph(g)))  } )
   d$graph_bertz <- sapply(d$graph_graph,FUN=function(g){ bertz(as_graphnel(getGraph(g)))  } )
-  d$graph_topologicalInfoContent <- sapply(d$graph_graph,FUN=function(g){ topologicalInfoContent(as_graphnel(getGraph(g)))$entropy  } )
+  d$graph_topologicalInfoContent <- sapply(d$graph_graph,FUN=function(g){
+    topologicalInfoContent(as_graphnel(getGraph(g)))$entropy  } )
+  d$graph_infoTheoreticGCM <- sapply(d$graph_graph,FUN=function(g){
+    g <- getGraph(g)
+    if(count_components(g) == 1)
+    infoTheoreticGCM(as_graphnel(g), dist = NULL, coeff = "lin", infofunct = "sphere", lambda = 1000, custCoeff=NULL, alpha=0.5, prec=53, flag.alpha=FALSE )$entropy
+    else
+      -1
+    } )
+  d$graph_infoTheoreticGCMDistance <- sapply(d$graph_graph,FUN=function(g){
+    g <- getGraph(g)
+    if(count_components(g) == 1)
+    infoTheoreticGCM(as_graphnel(g), dist = NULL, coeff = "lin", infofunct = "sphere", lambda = 1000, custCoeff=NULL, alpha=0.5, prec=53, flag.alpha=FALSE )$distance
+    else
+      -1
+    } )
 
   # ERROR
-  # d$graph_infoTheoreticGCM <- sapply(d$graph_graph,FUN=function(g){ infoTheoreticGCM(as_graphnel(getGraph(g)))$entropy  } )
   # d$graph_laplacianEnergy <- sapply(d$graph_graph,FUN=function(g){ laplacianEnergy(as_graphnel(getGraph(g)))  } )
   # d$graph_balabanJ <- sapply(d$graph_graph,FUN=function(g){ balabanJ(as_graphnel(getGraph(g)))  } )
   # d$graph_bonchev3 <- sapply(d$graph_graph,FUN=function(g){ bonchev3(as_graphnel(getGraph(g)))  } )
@@ -123,6 +142,7 @@ d <- graphMetrics(d)
 #### EVALUATION
 library(ggplot2)
 library(plotly)
+library(lme4)
 
 # plot_ly(d, x= ~graph_diameter, y=~graph_vertexCount, z=~graph_complexity, color=~graph_beauty, size = ~WorkTimeInSeconds)
 plot_ly(d) %>%
@@ -130,22 +150,27 @@ plot_ly(d) %>%
   # add_trace(type = 'scatter', x = ~graph_vertexCount, y = ~graph_topologicalInfoContent) %>%
   add_trace()
 
+plot_ly(d) %>%
+  add_trace( x = ~graph_beauty, y = ~graph_complexity, color = ~graph_vertexCount)
+
 hist(d$graph_complexity)
 hist(d$graph_topologicalInfoContent)
 plot_ly(d) %>% add_trace(type = 'scatter', x = ~graph_topologicalInfoContent, name = "topoloInfoContent", y = ~graph_complexity, color = ~graph_vertexCount)
 plot_ly(d) %>% add_trace(type = 'scatter', x = ~graph_topologicalInfoContent, name = "topoloInfoContent", y = ~graph_diameter, color = ~graph_vertexCount)
 
 plot_ly(d) %>%
-  # add_trace(type = 'scatter', x = ~graph_vertexCount, name = "vertexCount", y = ~graph_complexity) %>%
-  #  add_trace(type = 'scatter', x = ~graph_edgeCount, name = "edgeCount", y = ~graph_complexity) %>%
-  add_trace(type = 'scatter', x = ~graph_diameter, name = "diameter", y = ~graph_complexity) %>%
+  add_trace(type = 'scatter', x = ~graph_vertexCount, name = "vertexCount", y = ~graph_complexity) %>%
+   add_trace(type = 'scatter', x = ~graph_edgeCount, name = "edgeCount", y = ~graph_complexity) %>%
+  # add_trace(type = 'scatter', x = ~graph_diameter, name = "diameter", y = ~graph_complexity) %>%
   # add_trace(type = 'scatter', x = ~graph_adhesion, name = "adhesion", y = ~graph_complexity) %>%
   # add_trace(type = 'scatter', x = ~graph_cohesion, name = "cohesion", y = ~graph_complexity) %>%
   # add_trace(type = 'scatter', x = ~graph_componentCount, name = "components", y = ~graph_complexity) %>%
   # add_trace(type = 'scatter', x = ~graph_triangleCount, name = "triangles", y = ~graph_complexity) %>%
   add_trace(type = 'scatter', x = ~graph_energy, name = "energy", y = ~graph_complexity) %>%
   add_trace(type = 'scatter', x = ~graph_topologicalInfoContent, name = "topoloInfoContent", y = ~graph_complexity) %>%
-  add_trace(type = 'scatter', x = ~graph_bertz, name = "bertz", y = ~graph_complexity) %>%
+  add_trace(type = 'scatter', x = ~graph_infoTheoreticGCM, name = "infoTheoreticGCM", y = ~graph_complexity) %>%
+  add_trace(type = 'scatter', x = ~graph_infoTheoreticGCMDistance, name = "infoTheoreticGCMDistance", y = ~graph_complexity) %>%
+  # add_trace(type = 'scatter', x = ~graph_bertz, name = "bertz", y = ~graph_complexity) %>%
   # add_trace(type = 'scatter', x = ~graph_complexityIndexB, name = "complexityIndexB", y = ~graph_complexity) %>%
   add_trace(type = 'scatter', x = ~graph_compactness, name = "compactness", y = ~graph_complexity) %>%
   # add_trace(type = 'scatter', x = ~graph_symmetryIndex, name = "symmetryIndex", y = ~graph_complexity) %>%
@@ -159,32 +184,45 @@ cor(d$graph_vertexCount,d$graph_complexity)
 cor(d$graph_edgeCount, d$graph_complexity)
 
 
-summary(lm(d$graph_complexity ~
+model <- lm(d$graph_complexity ~
+             d$graph_beauty +
              d$graph_vertexCount +
-             # d$graph_edgeCount +
+             d$graph_edgeCount +
              d$graph_diameter +
-             # d$graph_adhesion +
-             # d$graph_cohesion +
-             # d$graph_componentCount +
-             # d$graph_triangleCount +
+             d$graph_adhesion +
+             d$graph_cohesion +
+             d$graph_componentCount +
+             d$graph_triangleCount +
              d$graph_energy +
              d$graph_topologicalInfoContent +
+             d$graph_infoTheoreticGCM  +
              d$graph_bertz +
              d$graph_spectralRadius +
              d$Answer.Gender +
              d$Answer.age +
              d$exp1 +
              d$exp2 +
-             d$Answer.distracted
-             # d$graph_complexityIndexB
-             # d$graph_compactness
-             # d$graph_symmetryIndex
-))
+             d$Answer.distracted +
+             # d$graph_complexityIndexB +
+             d$graph_compactness +
+             d$graph_symmetryIndex
+)
+model <- step(model, direction = "backward")
+model$anova
+confint(model)
 # plot(model)
+
+
 
 #d2 <- filter(d,d$pred<5)
 
+cor(d$graph_complexity,d$graph_vertexCount)
+cor(d$graph_complexity,d$graph_edgeCount)
 cor(d$graph_complexity,d$graph_topologicalInfoContent)
+cor(d$graph_complexity,d$graph_infoTheoreticGCM)
+cor(d$graph_complexity,d$graph_spectralRadius)
+cor(d$graph_complexity,d$graph_compactness)
+cor(d$graph_complexity,d$graph_energy)
 #hist(data$Answer.distracted)
 #
 #names(data)
