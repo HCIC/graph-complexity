@@ -35,32 +35,33 @@ var columns = {
 };
 _.merge(columns, detectBrowser());
 
-var graphs = [
-    {
-        "graph":newman(_.random(10,100), function() { return Math.ceil(d3.randomExponential(0.4)()); }),
-    },
-    {
-        "graph":newman(_.random(10,100), function() { return Math.ceil(d3.randomExponential(0.4)()); }),
-    },
-    {
-        "graph":newman(_.random(10,100), function() { return Math.ceil(d3.randomExponential(0.4)()); }),
-    },
-    {
-        "graph":newman(_.random(10,100), function() { return Math.ceil(d3.randomExponential(0.4)()); }),
-    },
-    {
-        "graph":newman(_.random(10,100), function() { return Math.ceil(d3.randomExponential(0.4)()); }),
-    },
-    // {
-    //     "graph":newman(_.random(1, 20), function() { return _.random(1, 4); }),
-    // },
-    // {
-    //     "graph":gilbert(_.random(1, 20), Math.random() * 0.5),
-    // },
-    // {
-    //     "graph":gilbert(d3.randomUniform(1, 10)(), 0.3),
-    // },
-];
+// var graphs = [
+//     {
+//         "graph":newman(_.random(10,100), function() { return Math.ceil(d3.randomExponential(0.4)()); }),
+//     },
+//     {
+//         "graph":newman(_.random(10,100), function() { return Math.ceil(d3.randomExponential(0.4)()); }),
+//     },
+//     {
+//         "graph":newman(_.random(10,100), function() { return Math.ceil(d3.randomExponential(0.4)()); }),
+//     },
+//     {
+//         "graph":newman(_.random(10,100), function() { return Math.ceil(d3.randomExponential(0.4)()); }),
+//     },
+//     {
+//         "graph":newman(_.random(10,100), function() { return Math.ceil(d3.randomExponential(0.4)()); }),
+//     },
+//     // {
+//     //     "graph":newman(_.random(1, 20), function() { return _.random(1, 4); }),
+//     // },
+//     // {
+//     //     "graph":gilbert(_.random(1, 20), Math.random() * 0.5),
+//     // },
+//     // {
+//     //     "graph":gilbert(d3.randomUniform(1, 10)(), 0.3),
+//     // },
+// ];
+var graphs = _.times(5, function() { return {"graph": randomGraph()};});
 
 for( var g = 0; g < graphs.length; g++) {
     var properties = {};
@@ -83,7 +84,60 @@ for( var g = 0; g < graphs.length; g++) {
 generateHiddenInputs(columns, d3.select("#columns"));
 
 
+
 ////////////////////////////////////////////////
+
+function downloadExamples(n) {
+    var graphs = _.times(n, function() {return GML(randomGraph())}).join("\n")
+    var header = "graph_gml"
+    var csv = header + "\n"+ graphs;
+    download("random_graphs.csv", csv);
+}
+
+function randomGraph() {
+    //TODO: connected graph
+    var maxVertices = 100;
+    var vertexCount = Math.ceil(Math.sqrt(_.random(1,maxVertices * maxVertices)))
+
+    var maxAvgDeg = vertexCount - 1;
+    var avgDeg = 3;//_.random(1, maxAvgDeg/2);
+    var edgeCount = Math.floor(vertexCount * avgDeg / 2);
+
+    // var minEdges = vertexCount - 1;
+    // var maxEdges = vertexCount*(vertexCount-1)/2
+
+    // var minDensity = minEdges/maxEdges;
+    // var density = Math.random() * Math.random();
+
+    // var edgeCount = Math.round(maxEdges*density);
+    // var edgeCount = _.random(minEdges, maxEdges);
+    // var edgeCount = _.random(minEdges, maxEdges);
+
+    var lambda = 0.5; //d3.randomUniform(0.1, 0.9)();
+    var distribution = d3.randomExponential(lambda);
+    var degreefunction  = function() { return Math.ceil(distribution()); }
+    var probs = _.times(vertexCount, function() {return Math.ceil(distribution());});
+    // var probs = _.times(vertexCount, function() {return 1/vertexCount;});
+    return randomConnectedGraph(vertexCount,edgeCount,normalize(probs));
+}
+
+function normalize(xs) {
+    var sum = _.sum(xs);
+    return _.map(xs, function(x) {return x / sum;});
+}
+
+function download(filename, text) {
+  var element = document.createElement('a');
+    element.href = window.URL.createObjectURL(new Blob([text], {type: 'text/csv'}));
+    element.download = filename;
+
+  element.style.display = 'none';
+  document.body.appendChild(element);
+
+  element.click();
+
+  document.body.removeChild(element);
+}
 
 function addGraphToColumns(columns, p, prefix, graph) {
     p["graph"] = GML(p.graph);
@@ -135,6 +189,7 @@ function addSlider(p, name, lowLabel, highLabel, container) {
 }
 
 function layoutGraph(p, graph) {
+    console.log("layouting graph...")
     var simulation = d3.forceSimulation()
         .force("center", d3.forceCenter(p.width / 2, p.height / 2))
         .force("gravityx", d3.forceX(p.width / 2).strength(p.gravityStrength))
@@ -249,13 +304,133 @@ function newman(n, degp) {
     return { "vertices": vertices, "edges": edges, };
 }
 
+function randomConnectedGraph(vertexCount, edgeCount, probs) {
+    console.log("generating graph...")
+    if(edgeCount > vertexCount * (vertexCount - 1) / 2) {
+        console.error("too many edges: ", vertexCount, edgeCount);
+        return;
+    }
+    var vertices = _.times(vertexCount, function(i) {
+        return { "id": i };
+    });
+    if(edgeCount < vertexCount - 1) {
+        console.error("impossible to generate CONNECTED graph with ", vertexCount, edgeCount);
+        return { "vertices": vertices, "edges": [], };
+    }
+    var edges = Array(edgeCount);
+    var randEdges = randomEdges(probs, edgeCount);
+    var discarded = 0;
+    while(!isConnected(vertexCount, randEdges)) {
+        discarded++;
+        if(discarded > 1000) {
+            console.warn("discarded too many unconnected graphs: ", vertexCount, edgeCount);
+            break;
+        }
+        randEdges = randomEdges(probs, edgeCount);
+    }
+    for( var i = 0; i < edgeCount; i += 1) {
+        edges[i] = { "source": randEdges[i*2], "target": randEdges[i*2+1], };
+    }
+    return { "vertices": vertices, "edges": edges, };
+}
+
+function genNeighbours(vertexCount, edges) {
+    var neighbours = Array(vertexCount);
+    for( var i = 0; i < edges.length / 2; i++) {
+        var v1 = edges[i*2];
+        var v2 = edges[i*2+1];
+        if(neighbours[v1] !== undefined) neighbours[v1].push(v2); else neighbours[v1] = [v2];
+        if(neighbours[v2] !== undefined) neighbours[v2].push(v1); else neighbours[v2] = [v1];
+    }
+    return neighbours;
+}
+
+function isConnected(vertexCount, edges) {
+    if(edges.length / 2 < vertexCount - 1) return false;
+    var visited = Array(vertexCount);
+    var visitCount = 0;
+    var neighbours = genNeighbours(vertexCount, edges);
+    var stack = [0]; // put first vertex on stack
+    while(stack.length > 0) {
+        var current = stack.pop();
+        if(!visited[current]) {
+            visited[current] = 1;
+            visitCount += 1;
+            stack = stack.concat(neighbours[current]);
+        }
+    }
+    return visitCount == vertexCount;
+}
+
+function randomEdges(probs, edgeCount) {
+    var cumulative = Array(probs.length);
+    cumulative[0] = probs[0];
+    for( var i = 1; i < probs.length; i ++) {
+        cumulative[i] = cumulative[i-1] + probs[i];
+    }
+
+    var epsilon = 1e-6;
+    if(cumulative[probs.length-1] < (1-epsilon) || cumulative[probs.length-1] > (1+epsilon)) {
+        console.error("probability does not sum to 1. is: ", cumulative[probs.length-1]);
+        return;
+    }
+
+    function getIndex(p) {
+        if( p <= cumulative[0] ) return 0;
+        for(var i = 1; i < cumulative.length; i++) {
+            if( cumulative[i-1] < p && p <= cumulative[i] ) return i;
+        }
+        console.error("p > 1");
+    }
+
+    var edges = Array(edgeCount * 2);
+
+    function edgeExists(v1, v2, limit) {
+        for( var i = 0; i < limit; i++ ) {
+            if(edges[2*i] == v1 && edges[2*i+1] == v2)
+                return true;
+        }
+        return false;
+    }
+
+    var discarded = 0;
+    // add edges
+    for( var i = 0; i < edgeCount; i++) {
+        var v1 = getIndex(Math.random());
+        var v2 = getIndex(Math.random());
+        if(v1 > v2) {
+            var tmp  = v1;
+            v1 = v2;
+            v2 = tmp;
+        }
+
+        if(v1 == v2) {i -=1; continue;} // no loops
+        if(edgeExists(v1,v2,i)) {
+            discarded++;
+            if( discarded > 100000 ) {
+                edges = edges.slice(0, 2*i);
+                console.warn("discarded too many edges. ", i, edgeCount);
+                break;
+            }
+            i -=1; continue;
+        } // no duplicates
+
+        edges[2*i] = v1;
+        edges[2*i+1] = v2;
+    }
+    return edges;
+}
+
 function GML(graph) {
     // http://www.fim.uni-passau.de/fileadmin/files/lehrstuhl/brandenburg/projekte/gml/gml-technical-report.pdf
     var nodes = _(graph.vertices).map(function(v) {
-        return "node [id " + v.id + " x " + Math.round(v.x) + " y " + Math.round(v.y) + "]";
+        var attributes = (isNaN(v.x) || isNaN(v.y)) ? "" : " x " + Math.round(v.x) + " y " + Math.round(v.y);
+        return "node [id " + v.id + attributes + "]";
     }).join(" ");
     var edges = _(graph.edges).map(function(e) {
-        return "edge [source " + e.source.id + " target " + e.target.id + "]";
+        var source = e.source.id || e.source;
+        var target = e.target.id || e.target;
+        return "edge [source " + source + " target " + target + "]";
     }).join(" ");
     return "graph [" + nodes + " " + edges + "]";
 }

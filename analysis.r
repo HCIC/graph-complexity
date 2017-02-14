@@ -14,27 +14,8 @@ if(FALSE){
   install.packages("QuACN")
 }
 
-getGraph <- function(graphString){
-  library(igraph)
-  library(uuid)
-
-  #  characters <- as.character(graphString)
-  filename <- paste("/tmp/", UUIDgenerate(), "temp.gml", sep = "")
-  write(as.character(graphString), file=filename)
-  graph <- as.undirected(read_graph(filename, format="gml"), mode="collapse")
-  file.remove(filename)
-
-
-  # https://github.com/igraph/rigraph/issues/154
-  graph <- delete_vertex_attr(graph, "x")
-  graph <- delete_vertex_attr(graph, "y")
-
-  edges <- which_multiple(graph, eids = E(graph))
-  es <- E(graph)[edges]
-  graph <- delete_edges(graph, es)
-  graph
-}
-
+source("getGraph.r")
+source("graphMetrics.r")
 
 loadData <- function() {
   library(tidyr)
@@ -68,75 +49,18 @@ loadData <- function() {
 
   newdata$pred = abs( 7 - newdata$exp2 - newdata$exp1 ) + newdata$Answer.distracted
   d <- na.omit(newdata)
-  onlyOneComponent <- Vectorize(function(g) {count_components(getGraph(g), mode = "weak") == 1})
-  d <- filter(d, onlyOneComponent(d$graph_graph))
+  # onlyOneComponent <- Vectorize(function(g) {count_components(getGraph(g), mode = "weak") == 1})
+  # d <- filter(d, onlyOneComponent(d$graph_graph))
   d
 }
 
 
 
-
-graphMetrics <- function (d) {
-  library(igraph)
-  library(QuACN)
-  # https://stackoverflow.com/questions/11308754/add-multiple-columns-to-r-data-table-in-one-function-call
-
-
-
-  # d[, c("vertexCount","edgeCount") :=
-  # metrics <- c(
-  #     c("vertexCount", function(graph){length(V(graph))} ),
-  #     c("edgeCount", function(graph){length(E(graph))} )
-  #   )
-
-  # d <- within(d, graph_edgeCount <- sapply(graph_graph,FUN=function(g){ length(E(getGraph(g))) } ))
-  d$graph_edgeCount <- sapply(d$graph_graph,FUN=function(g){ length(E(getGraph(g))) } )
-  d$graph_adhesion <- sapply(d$graph_graph,FUN=function(g){ a <- adhesion(getGraph(g), checks=TRUE); if(a < 0) 0 else a } )
-  d$graph_cohesion <- sapply(d$graph_graph,FUN=function(g){ cohesion(getGraph(g), checks=TRUE) } )
-  d$graph_componentCount <- sapply(d$graph_graph,FUN=function(g){ count_components(getGraph(g), mode = "weak") } )
-  d$graph_triangleCount <- sapply(d$graph_graph,FUN=function(g){ sum(count_triangles(getGraph(g)))/3 } )
-  d$graph_globalClusteringCoeff <- sapply(d$graph_graph,FUN=function(g){ globalClusteringCoeff(as_graphnel(getGraph(g)))  } )
-  d$graph_symmetryIndex <- sapply(d$graph_graph,FUN=function(g){ symmetryIndex(as_graphnel(getGraph(g)))  } )
-  # d$graph_complexityIndexB <- sapply(d$graph_graph,FUN=function(g){ complexityIndexB(as_graphnel(getGraph(g)))  } )
-  d$graph_efficiency <- sapply(d$graph_graph,FUN=function(g){ efficiency(as_graphnel(getGraph(g)))  } )
-  d$graph_spectralRadius <- sapply(d$graph_graph,FUN=function(g){ spectralRadius(as_graphnel(getGraph(g)))  } )
-
-  # promising
-  d$graph_vertexCount <- sapply(d$graph_graph,FUN=function(g){ length(V(getGraph(g))) } )
-  d$graph_diameter <- sapply(d$graph_graph,FUN=function(g){ igraph::diameter(getGraph(g)) } )
-  d$graph_energy <- sapply(d$graph_graph,FUN=function(g){ energy(as_graphnel(getGraph(g)))  } )
-  d$graph_compactness <- sapply(d$graph_graph,FUN=function(g){ compactness(as_graphnel(getGraph(g)))  } )
-  d$graph_bertz <- sapply(d$graph_graph,FUN=function(g){ bertz(as_graphnel(getGraph(g)))  } )
-  d$graph_topologicalInfoContent <- sapply(d$graph_graph,FUN=function(g){
-    topologicalInfoContent(as_graphnel(getGraph(g)))$entropy  } )
-  d$graph_infoTheoreticGCM <- sapply(d$graph_graph,FUN=function(g){
-    g <- getGraph(g)
-    if(count_components(g) == 1)
-    infoTheoreticGCM(as_graphnel(g), dist = NULL, coeff = "lin", infofunct = "sphere", lambda = 1000, custCoeff=NULL, alpha=0.5, prec=53, flag.alpha=FALSE )$entropy
-    else
-      -1
-    } )
-  d$graph_infoTheoreticGCMDistance <- sapply(d$graph_graph,FUN=function(g){
-    g <- getGraph(g)
-    if(count_components(g) == 1)
-    infoTheoreticGCM(as_graphnel(g), dist = NULL, coeff = "lin", infofunct = "sphere", lambda = 1000, custCoeff=NULL, alpha=0.5, prec=53, flag.alpha=FALSE )$distance
-    else
-      -1
-    } )
-
-  # ERROR
-  # d$graph_laplacianEnergy <- sapply(d$graph_graph,FUN=function(g){ laplacianEnergy(as_graphnel(getGraph(g)))  } )
-  # d$graph_balabanJ <- sapply(d$graph_graph,FUN=function(g){ balabanJ(as_graphnel(getGraph(g)))  } )
-  # d$graph_bonchev3 <- sapply(d$graph_graph,FUN=function(g){ bonchev3(as_graphnel(getGraph(g)))  } )
-  # d$graph_bonchev2 <- sapply(d$graph_graph,FUN=function(g){ bonchev2(as_graphnel(getGraph(g)))  } )
-
-  d
-}
 
 
 
 d <- loadData()
-d <- graphMetrics(d)
+d <- graphMetrics(d, "graph_graph")
 
 
 #### EVALUATION
@@ -146,7 +70,7 @@ library(lme4)
 
 # plot_ly(d, x= ~graph_diameter, y=~graph_vertexCount, z=~graph_complexity, color=~graph_beauty, size = ~WorkTimeInSeconds)
 plot_ly(d) %>%
-  add_trace( x = ~graph_vertexCount, y = ~graph_edgeCount, color = ~graph_complexity) %>%
+  add_trace( x = ~graph_vertexCount, z = ~graph_edgeCount, y = ~graph_degreesd, color = ~graph_complexity) %>%
   # add_trace(type = 'scatter', x = ~graph_vertexCount, y = ~graph_topologicalInfoContent) %>%
   add_trace()
 
