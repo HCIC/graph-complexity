@@ -35,37 +35,13 @@ var columns = {
 };
 _.merge(columns, detectBrowser());
 
-// var graphs = [
-//     {
-//         "graph":newman(_.random(10,100), function() { return Math.ceil(d3.randomExponential(0.4)()); }),
-//     },
-//     {
-//         "graph":newman(_.random(10,100), function() { return Math.ceil(d3.randomExponential(0.4)()); }),
-//     },
-//     {
-//         "graph":newman(_.random(10,100), function() { return Math.ceil(d3.randomExponential(0.4)()); }),
-//     },
-//     {
-//         "graph":newman(_.random(10,100), function() { return Math.ceil(d3.randomExponential(0.4)()); }),
-//     },
-//     {
-//         "graph":newman(_.random(10,100), function() { return Math.ceil(d3.randomExponential(0.4)()); }),
-//     },
-//     // {
-//     //     "graph":newman(_.random(1, 20), function() { return _.random(1, 4); }),
-//     // },
-//     // {
-//     //     "graph":gilbert(_.random(1, 20), Math.random() * 0.5),
-//     // },
-//     // {
-//     //     "graph":gilbert(d3.randomUniform(1, 10)(), 0.3),
-//     // },
-// ];
-var graphs = _.times(5, function() { return {"graph": randomGraph()};});
+var showGraphCount = 5;
+for( var g = 0; g < showGraphCount; g++) {
+    var graph = {"graph": randomGraph()};
 
-for( var g = 0; g < graphs.length; g++) {
+
     var properties = {};
-    _.merge(properties, defaultProperties, graphs[g]);
+    _.merge(properties, defaultProperties, graph);
 
     var graph = properties.graph;
     properties["repelStrength"] = properties.repelStrength / graph.vertices.length
@@ -88,37 +64,52 @@ generateHiddenInputs(columns, d3.select("#columns"));
 ////////////////////////////////////////////////
 
 function downloadExamples(n) {
-    var graphs = _.times(n, function() {return GML(randomGraph())}).join("\n")
-    var header = "graph_gml"
+    var header = "graph_gml,vertexCount,edgeCount,avgDeg,lambda"
+    var graphs = _.times(n, function(i) {
+        console.log(i+"/"+n);
+        var graph = randomGraph();
+        return GML(graph) + "," + graph.vertexCount + "," + graph.edgeCount + "," + graph.avgDeg + "," + graph.lambda;
+    }).join("\n")
     var csv = header + "\n"+ graphs;
     download("random_graphs.csv", csv);
 }
 
 function randomGraph() {
-    //TODO: connected graph
+    console.log("generating graph...")
+    var graph = null;
     var maxVertices = 100;
-    var vertexCount = Math.ceil(Math.sqrt(_.random(1,maxVertices * maxVertices)))
+    var vertexCount, edgeCount, avgDeg, lambda;
+    while( graph == null ) {
+        vertexCount = 20;//Math.ceil(Math.sqrt(d3.randomUniform(1,maxVertices * maxVertices)()));
 
-    var maxAvgDeg = vertexCount - 1;
-    var avgDeg = 3;//_.random(1, maxAvgDeg/2);
-    var edgeCount = Math.floor(vertexCount * avgDeg / 2);
+        var minEdges = vertexCount - 1;
+        var maxEdges = vertexCount*(vertexCount-1)/2;
 
-    // var minEdges = vertexCount - 1;
-    // var maxEdges = vertexCount*(vertexCount-1)/2
+        avgDeg = 3; //d3.randomUniform(0.0, 5)();
+        edgeCount = Math.floor(vertexCount * avgDeg / 2);
 
-    // var minDensity = minEdges/maxEdges;
-    // var density = Math.random() * Math.random();
-
-    // var edgeCount = Math.round(maxEdges*density);
-    // var edgeCount = _.random(minEdges, maxEdges);
-    // var edgeCount = _.random(minEdges, maxEdges);
-
-    var lambda = 0.5; //d3.randomUniform(0.1, 0.9)();
-    var distribution = d3.randomExponential(lambda);
-    var degreefunction  = function() { return Math.ceil(distribution()); }
-    var probs = _.times(vertexCount, function() {return Math.ceil(distribution());});
-    // var probs = _.times(vertexCount, function() {return 1/vertexCount;});
-    return randomConnectedGraph(vertexCount,edgeCount,normalize(probs));
+        lambda = d3.randomUniform(1, 1.5)();
+        // var distribution = d3.randomExponential(lambda);
+        // var degreefunction  = function() { return Math.ceil(distribution()); }
+        var probs = _.times(vertexCount, function(i) {return Math.pow(lambda,-i);});
+        // var probs = _.times(vertexCount, function(i) {return 1/Math.pow(1+i,lambda);});
+        // var probs = _.times(vertexCount, function(i) {return 1;});
+        probs = normalize(probs);
+        // var probs = _.times(vertexCount, function() {return 1/vertexCount;});
+        graph = randomConnectedGraph(vertexCount,edgeCount,normalize(probs));
+        if(graph == null) {
+            console.warn("tried: vertices: ", vertexCount, " edges: ", edgeCount, " avg deg: ", avgDeg, "lambda: ", lambda);
+            console.warn(probs);
+        }
+        else {
+            graph.vertexCount = vertexCount;
+            graph.edgeCount = edgeCount;
+            graph.lambda = lambda;
+            graph.avgDeg = avgDeg;
+        }
+    }
+    console.log("done. vertices: ", vertexCount, " edges: ", edgeCount, " avg deg: ", avgDeg, "lambda: ", lambda)
+    return graph;
 }
 
 function normalize(xs) {
@@ -284,7 +275,6 @@ function newman(n, degp) {
             return v.openstubs > 0;
         });
         if (candidates.length == 1) {
-            //TODO:
             console.warn("cannot create more edges. Only one vertex left", candidates);
             break;
         }
@@ -304,18 +294,18 @@ function newman(n, degp) {
     return { "vertices": vertices, "edges": edges, };
 }
 
+// may return null
 function randomConnectedGraph(vertexCount, edgeCount, probs) {
-    console.log("generating graph...")
     if(edgeCount > vertexCount * (vertexCount - 1) / 2) {
-        console.error("too many edges: ", vertexCount, edgeCount);
-        return;
+        console.warn("too many edges: ", vertexCount, edgeCount);
+        return null;
     }
     var vertices = _.times(vertexCount, function(i) {
         return { "id": i };
     });
     if(edgeCount < vertexCount - 1) {
-        console.error("impossible to generate CONNECTED graph with ", vertexCount, edgeCount);
-        return { "vertices": vertices, "edges": [], };
+        // console.warn("skip impossible connected graph with ", vertexCount, edgeCount);
+        return null;
     }
     var edges = Array(edgeCount);
     var randEdges = randomEdges(probs, edgeCount);
@@ -324,7 +314,7 @@ function randomConnectedGraph(vertexCount, edgeCount, probs) {
         discarded++;
         if(discarded > 1000) {
             console.warn("discarded too many unconnected graphs: ", vertexCount, edgeCount);
-            break;
+            return null;
         }
         randEdges = randomEdges(probs, edgeCount);
     }
@@ -346,6 +336,7 @@ function genNeighbours(vertexCount, edges) {
 }
 
 function isConnected(vertexCount, edges) {
+    if(vertexCount == 1) return true;
     if(edges.length / 2 < vertexCount - 1) return false;
     var visited = Array(vertexCount);
     var visitCount = 0;
@@ -363,19 +354,20 @@ function isConnected(vertexCount, edges) {
 }
 
 function randomEdges(probs, edgeCount) {
-    var cumulative = Array(probs.length);
+    var vertexCount = probs.length;
+    var cumulative = Array(vertexCount);
     cumulative[0] = probs[0];
-    for( var i = 1; i < probs.length; i ++) {
+    for( var i = 1; i < vertexCount; i ++) {
         cumulative[i] = cumulative[i-1] + probs[i];
     }
 
     var epsilon = 1e-6;
-    if(cumulative[probs.length-1] < (1-epsilon) || cumulative[probs.length-1] > (1+epsilon)) {
-        console.error("probability does not sum to 1. is: ", cumulative[probs.length-1]);
+    if(cumulative[vertexCount-1] < (1-epsilon) || cumulative[vertexCount-1] > (1+epsilon)) {
+        console.error("probability does not sum to 1. is: ", cumulative[vertexCount-1]);
         return;
     }
 
-    function getIndex(p) {
+    function getIndexLinear(p) {
         if( p <= cumulative[0] ) return 0;
         for(var i = 1; i < cumulative.length; i++) {
             if( cumulative[i-1] < p && p <= cumulative[i] ) return i;
@@ -383,9 +375,22 @@ function randomEdges(probs, edgeCount) {
         console.error("p > 1");
     }
 
-    var edges = Array(edgeCount * 2);
+    function getIndex(p) {
+        // Binary Search
+        var lo = 0;
+        var hi = vertexCount - 1;
+        while(lo <= hi) {
+            var current = lo + Math.floor((hi-lo) / 2);
+            if(cumulative[current] > p) hi = current - 1;
+            else lo = current+1;
+        }
+        return lo;
+    }
 
-    function edgeExists(v1, v2, limit) {
+    var edges = Array(edgeCount * 2);
+    var adjacencyMatrix = _.times(vertexCount, function() { return []});
+
+    function edgeExistsLinear(v1, v2, limit) {
         for( var i = 0; i < limit; i++ ) {
             if(edges[2*i] == v1 && edges[2*i+1] == v2)
                 return true;
@@ -393,12 +398,16 @@ function randomEdges(probs, edgeCount) {
         return false;
     }
 
+    function edgeExists(v1, v2, limit) {
+        return adjacencyMatrix[v1][v2] === true;
+    }
+
     var discarded = 0;
     // add edges
     for( var i = 0; i < edgeCount; i++) {
         var v1 = getIndex(Math.random());
         var v2 = getIndex(Math.random());
-        if(v1 > v2) {
+        if(v1 > v2) { // order vertices, because undirected edge
             var tmp  = v1;
             v1 = v2;
             v2 = tmp;
@@ -407,7 +416,7 @@ function randomEdges(probs, edgeCount) {
         if(v1 == v2) {i -=1; continue;} // no loops
         if(edgeExists(v1,v2,i)) {
             discarded++;
-            if( discarded > 100000 ) {
+            if( discarded > 10000000 ) {
                 edges = edges.slice(0, 2*i);
                 console.warn("discarded too many edges. ", i, edgeCount);
                 break;
@@ -417,6 +426,7 @@ function randomEdges(probs, edgeCount) {
 
         edges[2*i] = v1;
         edges[2*i+1] = v2;
+        adjacencyMatrix[v1][v2] = true;
     }
     return edges;
 }

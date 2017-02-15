@@ -10,8 +10,8 @@ getGraph <- function(graphString){
 
 
   # https://github.com/igraph/rigraph/issues/154
-  # graph <- delete_vertex_attr(graph, "x")
-  # graph <- delete_vertex_attr(graph, "y")
+  graph <- delete_vertex_attr(graph, "x")
+  graph <- delete_vertex_attr(graph, "y")
 
   edges <- which_multiple(graph, eids = E(graph))
   es <- E(graph)[edges]

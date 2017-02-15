@@ -14,6 +14,7 @@ if(FALSE){
   install.packages("QuACN")
 }
 
+setwd("/home/felix/projects/graph-complexity")
 source("getGraph.r")
 source("graphMetrics.r")
 
@@ -49,18 +50,50 @@ loadData <- function() {
 
   newdata$pred = abs( 7 - newdata$exp2 - newdata$exp1 ) + newdata$Answer.distracted
   d <- na.omit(newdata)
-  # onlyOneComponent <- Vectorize(function(g) {count_components(getGraph(g), mode = "weak") == 1})
-  # d <- filter(d, onlyOneComponent(d$graph_graph))
+  onlyOneComponent <- Vectorize(function(g) {count_components(getGraph(g), mode = "weak") == 1})
+  d <- filter(d, onlyOneComponent(d$graph_graph))
   d
 }
 
 
 
-
-
-
 d <- loadData()
 d <- graphMetrics(d, "graph_graph")
+
+
+correlations <- c()
+for(i in 1:1000) {
+
+  dtemp <- sample_n(d, 100)
+  r <- cor(dtemp$graph_complexity, dtemp$graph_topologicalInfoContent)
+  correlations <- c(correlations,r)
+}
+r <- data.frame(r = correlations)
+plot_ly(r, x = ~r)
+s <- filter(d, d$graph_vertexCount == 4)
+plot_ly(s, x = ~graph_complexity)
+plot_ly(d, x = ~graph_topologicalInfoContent)
+
+
+
+# for( a in 1:length(d$graph_graph) ) {
+#   ag <- getGraph(d$graph_graph[a])
+#   for( b in 1:length(d$graph_graph)) {
+#     if(a < b) {
+#     bg <- getGraph(d$graph_graph[b])
+#       if(length(V(ag)) > 1 && isomorphic(ag,bg)) {
+#           print("wooooooo")
+#           print(a)
+#           print(b)
+#           print(length(V(ag)))
+#           print(length(E(ag)))
+#           print(d$graph_complexity[a])
+#           print(d$graph_complexity[b])
+#           plot(ag)
+#         }
+#     }
+#   }
+# }
 
 
 #### EVALUATION
@@ -82,6 +115,8 @@ hist(d$graph_topologicalInfoContent)
 plot_ly(d) %>% add_trace(type = 'scatter', x = ~graph_topologicalInfoContent, name = "topoloInfoContent", y = ~graph_complexity, color = ~graph_vertexCount)
 plot_ly(d) %>% add_trace(type = 'scatter', x = ~graph_topologicalInfoContent, name = "topoloInfoContent", y = ~graph_diameter, color = ~graph_vertexCount)
 
+plot_ly(d) %>% add_trace(z = ~graph_complexity, x = ~graph_vertexCount, y = ~graph_edgeCount, color = ~graph_topologicalInfoContent)
+
 plot_ly(d) %>%
   add_trace(type = 'scatter', x = ~graph_vertexCount, name = "vertexCount", y = ~graph_complexity) %>%
    add_trace(type = 'scatter', x = ~graph_edgeCount, name = "edgeCount", y = ~graph_complexity) %>%
@@ -90,16 +125,16 @@ plot_ly(d) %>%
   # add_trace(type = 'scatter', x = ~graph_cohesion, name = "cohesion", y = ~graph_complexity) %>%
   # add_trace(type = 'scatter', x = ~graph_componentCount, name = "components", y = ~graph_complexity) %>%
   # add_trace(type = 'scatter', x = ~graph_triangleCount, name = "triangles", y = ~graph_complexity) %>%
-  add_trace(type = 'scatter', x = ~graph_energy, name = "energy", y = ~graph_complexity) %>%
+  # add_trace(type = 'scatter', x = ~graph_energy, name = "energy", y = ~graph_complexity) %>%
   add_trace(type = 'scatter', x = ~graph_topologicalInfoContent, name = "topoloInfoContent", y = ~graph_complexity) %>%
-  add_trace(type = 'scatter', x = ~graph_infoTheoreticGCM, name = "infoTheoreticGCM", y = ~graph_complexity) %>%
-  add_trace(type = 'scatter', x = ~graph_infoTheoreticGCMDistance, name = "infoTheoreticGCMDistance", y = ~graph_complexity) %>%
+  # add_trace(type = 'scatter', x = ~graph_infoTheoreticGCM, name = "infoTheoreticGCM", y = ~graph_complexity) %>%
+  # add_trace(type = 'scatter', x = ~graph_infoTheoreticGCMDistance, name = "infoTheoreticGCMDistance", y = ~graph_complexity) %>%
   # add_trace(type = 'scatter', x = ~graph_bertz, name = "bertz", y = ~graph_complexity) %>%
   # add_trace(type = 'scatter', x = ~graph_complexityIndexB, name = "complexityIndexB", y = ~graph_complexity) %>%
-  add_trace(type = 'scatter', x = ~graph_compactness, name = "compactness", y = ~graph_complexity) %>%
+  # add_trace(type = 'scatter', x = ~graph_compactness, name = "compactness", y = ~graph_complexity) %>%
   # add_trace(type = 'scatter', x = ~graph_symmetryIndex, name = "symmetryIndex", y = ~graph_complexity) %>%
   # add_trace(type = 'scatter', x = ~graph_efficiency, name = "efficiency", y = ~graph_complexity) %>%
-  add_trace(type = 'scatter', x = ~graph_spectralRadius, name = "spectralRadius", y = ~graph_complexity) %>%
+  # add_trace(type = 'scatter', x = ~graph_spectralRadius, name = "spectralRadius", y = ~graph_complexity) %>%
   # add_trace(type = 'scatter', x = ~graph_globalClusteringCoeff, name = "globalClusteringCoeff", y = ~graph_complexity) %>%
   #  add_trace(type = 'scatter', x = ~graph_beauty, name = "beauty", y = ~graph_complexity) %>%
   add_trace()
