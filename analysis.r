@@ -50,15 +50,19 @@ loadData <- function() {
 
   newdata$pred = abs( 7 - newdata$exp2 - newdata$exp1 ) + newdata$Answer.distracted
   d <- na.omit(newdata)
+
   onlyOneComponent <- Vectorize(function(g) {count_components(getGraph(g), mode = "weak") == 1})
   d <- filter(d, onlyOneComponent(d$graph_graph))
+
   d
 }
 
 
 
 d <- loadData()
-d <- graphMetrics(d, "graph_graph")
+plot_ly(d, x=~pred)
+gml_column <- "graph_graph"
+d <- graphMetrics(d, gml_column)
 
 
 correlations <- c()
@@ -115,7 +119,14 @@ hist(d$graph_topologicalInfoContent)
 plot_ly(d) %>% add_trace(type = 'scatter', x = ~graph_topologicalInfoContent, name = "topoloInfoContent", y = ~graph_complexity, color = ~graph_vertexCount)
 plot_ly(d) %>% add_trace(type = 'scatter', x = ~graph_topologicalInfoContent, name = "topoloInfoContent", y = ~graph_diameter, color = ~graph_vertexCount)
 
-plot_ly(d) %>% add_trace(z = ~graph_complexity, x = ~graph_vertexCount, y = ~graph_edgeCount, color = ~graph_topologicalInfoContent)
+plot_ly(d) %>% add_trace(z = ~graph_complexity, x = ~graph_vertexCount, y = ~graph_edgeCount, color = ~graph_topologicalInfoContentLog)
+plot_ly(d) %>% add_trace(z = ~graph_complexity, x = ~graph_vertexCount, y = ~graph_edgeCount, color = ~graph_infoTheoreticGCM)
+plot_ly(d) %>% add_trace(z = ~graph_complexity, x = ~graph_vertexCount, y = ~graph_edgeCount, color = ~graph_spectralRadius)
+
+
+layout(p = plot_ly(d, type = 'scatter', mode = 'markers', color = ~graph_complexity, y = ~graph_topologicalInfoContent, x = ~graph_vertexCount), xaxis = list(type = "log"))
+layout(p = plot_ly(d, type = 'scatter', mode = 'markers', color = ~graph_complexity, y = ~graph_edgeCount, x = ~graph_vertexCount))
+# layout(p = plot_ly(d, type = 'scatter', mode = 'markers', color = ~graph_beauty, y = ~Answer.age, x = ~graph_vertexCount))
 
 plot_ly(d) %>%
   add_trace(type = 'scatter', x = ~graph_vertexCount, name = "vertexCount", y = ~graph_complexity) %>%
@@ -143,10 +154,10 @@ cor(d$graph_vertexCount,d$graph_complexity)
 cor(d$graph_edgeCount, d$graph_complexity)
 
 
-model <- lm(d$graph_complexity ~
-             d$graph_beauty +
+model <- lm(d$graph_beauty ~
              d$graph_vertexCount +
              d$graph_edgeCount +
+             d$graph_degreesd +
              d$graph_diameter +
              d$graph_adhesion +
              d$graph_cohesion +
@@ -160,13 +171,14 @@ model <- lm(d$graph_complexity ~
              d$Answer.Gender +
              d$Answer.age +
              d$exp1 +
-             d$exp2 +
+             # d$exp2 +
              d$Answer.distracted +
              # d$graph_complexityIndexB +
              d$graph_compactness +
              d$graph_symmetryIndex
 )
 model <- step(model, direction = "backward")
+summary(model)
 model$anova
 confint(model)
 # plot(model)

@@ -1,16 +1,14 @@
-
-
 <!-- BEGIN CUSTOM CODE -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/4.5.0/d3.min.js"></script>
 <script src="https://cdn.jsdelivr.net/lodash/4.17.4/lodash.min.js"></script>
 
 <div class="col-sm-8 col-sm-offset-2">
-<div id="graphs"> </div>
-<div id="columns"></div>
+  <div id="graphs"> </div>
+  <div id="columns"></div>
 </div>
 
 <script>
-var defaultProperties = {
+  var defaultProperties = {
     "width": 400,
     "height": 400,
     "vertexRadius": 5,
@@ -24,20 +22,22 @@ var defaultProperties = {
     "repelStrength": -1500,
     "linkDistance": 10,
     "gravityStrength": 0.05,
-}
+  }
 
-var columns = {
+  var columns = {
     "screenWidth": screen.width,
     "screenHeight": screen.height,
     "screenAvailableWidth": screen.availWidth,
     "screenAvailableHeight": screen.availHeight,
     "devicePixelRatio": window.devicePixelRatio,
-};
-_.merge(columns, detectBrowser());
+  };
+  _.merge(columns, detectBrowser());
 
-var showGraphCount = 5;
-for( var g = 0; g < showGraphCount; g++) {
-    var graph = {"graph": randomGraph()};
+  var showGraphCount = 5;
+  for (var g = 0; g < showGraphCount; g++) {
+    var graph = {
+      "graph": randomGraph()
+    };
 
 
     var properties = {};
@@ -50,144 +50,176 @@ for( var g = 0; g < showGraphCount; g++) {
     var container = d3.select("#graphs").append("div")
     drawGraph(properties, graph, container);
     container.append("br")
-    addSlider(properties, "graph"+g+"_complexity", "simple", "complex", container)
-    addSlider(properties, "graph"+g+"_beauty", "ugly", "beautiful", container)
+    addSlider(properties, "graph" + g + "_complexity", "simple", "complex", container)
+    addSlider(properties, "graph" + g + "_beauty", "ugly", "beautiful", container)
     container.style("margin-bottom", "100px")
 
-    addGraphToColumns(columns, properties, "graph"+g+"_", graph);
-}
+    addGraphToColumns(columns, properties, "graph" + g + "_", graph);
+  }
 
-generateHiddenInputs(columns, d3.select("#columns"));
+  generateHiddenInputs(columns, d3.select("#columns"));
 
 
 
-////////////////////////////////////////////////
+  ////////////////////////////////////////////////
 
-function downloadExamples(n) {
+  function downloadExamples(n) {
     var header = "graph_gml,vertexCount,edgeCount,avgDeg,lambda"
     var graphs = _.times(n, function(i) {
-        console.log(i+"/"+n);
-        var graph = randomGraph();
-        return GML(graph) + "," + graph.vertexCount + "," + graph.edgeCount + "," + graph.avgDeg + "," + graph.lambda;
+      console.log(i + "/" + n);
+      var graph = randomGraph();
+      return GML(graph) + "," + graph.vertexCount + "," + graph.edgeCount + "," + graph.avgDeg + "," + graph.lambda;
     }).join("\n")
-    var csv = header + "\n"+ graphs;
+    var csv = header + "\n" + graphs;
     download("random_graphs.csv", csv);
-}
+  }
 
-function randomGraph() {
+  function randomGraph() {
     console.log("generating graph...")
     var graph = null;
     var maxVertices = 100;
     var vertexCount, edgeCount, avgDeg, lambda;
-    while( graph == null ) {
-        vertexCount = 20;//Math.ceil(Math.sqrt(d3.randomUniform(1,maxVertices * maxVertices)()));
+    while (graph == null) {
+      vertexCount = 40; //Math.ceil(Math.sqrt(d3.randomUniform(1,maxVertices * maxVertices)()));
 
-        var minEdges = vertexCount - 1;
-        var maxEdges = vertexCount*(vertexCount-1)/2;
+      var minEdges = vertexCount - 1;
+      var maxEdges = vertexCount * (vertexCount - 1) / 2;
 
-        avgDeg = 3; //d3.randomUniform(0.0, 5)();
-        edgeCount = Math.floor(vertexCount * avgDeg / 2);
+      avgDeg = 3; //d3.randomUniform(0.0, 5)();
+      edgeCount = Math.floor(vertexCount * avgDeg / 2);
 
-        lambda = d3.randomUniform(1, 1.5)();
-        // var distribution = d3.randomExponential(lambda);
-        // var degreefunction  = function() { return Math.ceil(distribution()); }
-        var probs = _.times(vertexCount, function(i) {return Math.pow(lambda,-i);});
-        // var probs = _.times(vertexCount, function(i) {return 1/Math.pow(1+i,lambda);});
-        // var probs = _.times(vertexCount, function(i) {return 1;});
-        probs = normalize(probs);
-        // var probs = _.times(vertexCount, function() {return 1/vertexCount;});
-        graph = randomConnectedGraph(vertexCount,edgeCount,normalize(probs));
-        if(graph == null) {
-            console.warn("tried: vertices: ", vertexCount, " edges: ", edgeCount, " avg deg: ", avgDeg, "lambda: ", lambda);
-            console.warn(probs);
-        }
-        else {
-            graph.vertexCount = vertexCount;
-            graph.edgeCount = edgeCount;
-            graph.lambda = lambda;
-            graph.avgDeg = avgDeg;
-        }
+      // var distribution = d3.randomExponential(lambda);
+      // var degreefunction  = function() { return Math.ceil(distribution()); }
+      // var probs = _.times(vertexCount, function(i) {return Math.pow(lambda,-i);});
+      // lambda = 0.9; //d3.randomUniform(0, 1.5)();
+      lambda = d3.randomUniform(0, 15)();
+      var probs = _.times(vertexCount, function(i) {
+        return lambda + Math.pow(0.9, -i);
+      });
+      // var probs = _.times(vertexCount, function(i) {return 1/Math.pow(1+i,lambda);});
+      // var probs = _.times(vertexCount, function(i) {return 1;});
+      //
+      // lambda = d3.randomExponential(0.1)(); //0, 100)();
+      // var probs = linear(vertexCount, lambda);
+      probs = normalize(probs);
+      // var probs = _.times(vertexCount, function() {return 1/vertexCount;});
+      graph = randomConnectedGraph(vertexCount, edgeCount, normalize(probs));
+      if (graph == null) {
+        console.warn("tried: vertices: ", vertexCount, " edges: ", edgeCount, " avg deg: ", avgDeg, "lambda: ", lambda);
+        console.warn(probs);
+      } else {
+        graph.vertexCount = vertexCount;
+        graph.edgeCount = edgeCount;
+        graph.lambda = lambda;
+        graph.avgDeg = avgDeg;
+      }
     }
     console.log("done. vertices: ", vertexCount, " edges: ", edgeCount, " avg deg: ", avgDeg, "lambda: ", lambda)
     return graph;
-}
+  }
 
-function normalize(xs) {
+  function linear(n, offset) {
+    return _.times(n, function(i) {
+      return offset + (i + 1) / n;
+    });
+  }
+
+  function normalize(xs) {
     var sum = _.sum(xs);
-    return _.map(xs, function(x) {return x / sum;});
-}
+    return _.map(xs, function(x) {
+      return x / sum;
+    });
+  }
 
-function download(filename, text) {
-  var element = document.createElement('a');
-    element.href = window.URL.createObjectURL(new Blob([text], {type: 'text/csv'}));
+  function download(filename, text) {
+    var element = document.createElement('a');
+    element.href = window.URL.createObjectURL(new Blob([text], {
+      type: 'text/csv'
+    }));
     element.download = filename;
 
-  element.style.display = 'none';
-  document.body.appendChild(element);
+    element.style.display = 'none';
+    document.body.appendChild(element);
 
-  element.click();
+    element.click();
 
-  document.body.removeChild(element);
-}
+    document.body.removeChild(element);
+  }
 
-function addGraphToColumns(columns, p, prefix, graph) {
+  function addGraphToColumns(columns, p, prefix, graph) {
     p["graph"] = GML(p.graph);
-    var prefixed = _.mapKeys(p, function(v,k) {return prefix + k;});
+    var prefixed = _.mapKeys(p, function(v, k) {
+      return prefix + k;
+    });
     _.merge(columns, prefixed);
-}
+  }
 
-function drawGraph(p, graph, container) {
+  function drawGraph(p, graph, container) {
     var svg = container.append("svg")
-        .attr("width", p.width)
-        .attr("height", p.height)
-        .style("background-color", p.backgroundColor)
-        .style("border", p.borderWidth + "px solid " + p.borderColor);
+      .attr("width", p.width)
+      .attr("height", p.height)
+      .style("background-color", p.backgroundColor)
+      .style("border", p.borderWidth + "px solid " + p.borderColor);
 
     svg.append("g").selectAll("line").data(graph.edges).enter()
-        .append("line")
-        .attr("x1", function(d) { return d.source.x; })
-        .attr("y1", function(d) { return d.source.y; })
-        .attr("x2", function(d) { return d.target.x; })
-        .attr("y2", function(d) { return d.target.y; })
-        .attr("stroke", p.edgeColor)
-        .attr("stroke-width", p.edgeWidth);
+      .append("line")
+      .attr("x1", function(d) {
+        return d.source.x;
+      })
+      .attr("y1", function(d) {
+        return d.source.y;
+      })
+      .attr("x2", function(d) {
+        return d.target.x;
+      })
+      .attr("y2", function(d) {
+        return d.target.y;
+      })
+      .attr("stroke", p.edgeColor)
+      .attr("stroke-width", p.edgeWidth);
 
     svg.append("g").selectAll("circle").data(graph.vertices).enter()
-        .append("circle")
-        .attr("r", p.vertexRadius)
-        .attr("cx", function(d) { return d.x; })
-        .attr("cy", function(d) { return d.y; })
-        .attr("fill", p.vertexColor)
-}
+      .append("circle")
+      .attr("r", p.vertexRadius)
+      .attr("cx", function(d) {
+        return d.x;
+      })
+      .attr("cy", function(d) {
+        return d.y;
+      })
+      .attr("fill", p.vertexColor)
+  }
 
-function addSlider(p, name, lowLabel, highLabel, container) {
+  function addSlider(p, name, lowLabel, highLabel, container) {
     var slider = container.append("input").attr("type", "range")
-        .attr("name", name)
-        .attr("min", 0)
-        .attr("max", 1)
-        .attr("step", 0.0001)
-        .attr("value", 0.5)
-        .style("width", p.width+"px")
-        .style("margin-top", "20px")
+      .attr("name", name)
+      .attr("min", 0)
+      .attr("max", 1)
+      .attr("step", 0.0001)
+      .attr("value", 0.5)
+      .style("width", p.width + "px")
+      .style("margin-top", "20px")
 
     var labels = container.append("div")
-        .style("display", "flex")
-        .style("justify-content", "space-between")
-        .style("width", p.width+"px")
+      .style("display", "flex")
+      .style("justify-content", "space-between")
+      .style("width", p.width + "px")
 
     labels.append("div").text(lowLabel)
     labels.append("div").text(highLabel)
-}
+  }
 
-function layoutGraph(p, graph) {
+  function layoutGraph(p, graph) {
     console.log("layouting graph...")
     var simulation = d3.forceSimulation()
-        .force("center", d3.forceCenter(p.width / 2, p.height / 2))
-        .force("gravityx", d3.forceX(p.width / 2).strength(p.gravityStrength))
-        .force("gravityy", d3.forceY(p.height / 2).strength(p.gravityStrength))
-        .force("repel", d3.forceManyBody().strength(p.repelStrength))
-        .force("link", d3.forceLink().id(function(d) { return d.id; }).distance(p.linkDistance))
-        .force("collide", d3.forceCollide(p.vertexRadius));
+      .force("center", d3.forceCenter(p.width / 2, p.height / 2))
+      .force("gravityx", d3.forceX(p.width / 2).strength(p.gravityStrength))
+      .force("gravityy", d3.forceY(p.height / 2).strength(p.gravityStrength))
+      .force("repel", d3.forceManyBody().strength(p.repelStrength))
+      .force("link", d3.forceLink().id(function(d) {
+        return d.id;
+      }).distance(p.linkDistance))
+      .force("collide", d3.forceCollide(p.vertexRadius));
 
     simulation.nodes(graph.vertices);
     simulation.force("link").links(graph.edges);
@@ -195,257 +227,299 @@ function layoutGraph(p, graph) {
 
     simulation.force("repel").strength(-10000);
     converge()
-    // converge()
+      // converge()
     simulation.force("repel").strength(p.repelStrength);
     // converge()
     converge()
     converge()
 
     function converge() {
-        simulation.alpha(1);
-        while (simulation.alpha() >= simulation.alphaMin()) {
-            simulation.tick();
-        }
+      simulation.alpha(1);
+      while (simulation.alpha() >= simulation.alphaMin()) {
+        simulation.tick();
+      }
     }
-}
+  }
 
-function addLabValuesForColors(p) {
+  function addLabValuesForColors(p) {
     StringEndsWithPolyfill();
-    for( key in p ) {
-        if(key.endsWith("color") || key.endsWith("Color")) {
-            var colorLab = d3.lab(p[key]);
-            p[key + "LabL"] = colorLab.l;
-            p[key + "LabA"] = colorLab.a;
-            p[key + "LabB"] = colorLab.b;
-        }
+    for (key in p) {
+      if (key.endsWith("color") || key.endsWith("Color")) {
+        var colorLab = d3.lab(p[key]);
+        p[key + "LabL"] = colorLab.l;
+        p[key + "LabA"] = colorLab.a;
+        p[key + "LabB"] = colorLab.b;
+      }
     }
-}
+  }
 
-function generateHiddenInputs(p, inputSelection) {
+  function generateHiddenInputs(p, inputSelection) {
     addLabValuesForColors(p)
 
     // convert parameters to array to generate input fields with d3
     var pdata = _.map(p, function(v, k) {
-        var obj = { "name": k, "value": v };
-        return obj;
+      var obj = {
+        "name": k,
+        "value": v
+      };
+      return obj;
     });
 
     inputSelection.selectAll("input").data(pdata).enter()
-        .append("input")
-        .attr("type", "hidden")
-        .attr("name", function(d) { return d.name; })
-        .attr("value", function(d) { return d.value; });
-}
+      .append("input")
+      .attr("type", "hidden")
+      .attr("name", function(d) {
+        return d.name;
+      })
+      .attr("value", function(d) {
+        return d.value;
+      });
+  }
 
-function gilbert(n, p) {
+  function gilbert(n, p) {
     var v = [];
     for (var i = 0; i < n; i++) {
-        v.push({ "id": i });
+      v.push({
+        "id": i
+      });
     }
     var e = [];
     for (var i = 0; i < v.length; i++) {
-        for (var j = i + 1; j < v.length; j++) {
-            if (Math.random() <= p) {
-                e.push({ "source": i, "target": j });
-            }
+      for (var j = i + 1; j < v.length; j++) {
+        if (Math.random() <= p) {
+          e.push({
+            "source": i,
+            "target": j
+          });
         }
+      }
     }
-    return { "vertices": v, "edges": e };
-}
+    return {
+      "vertices": v,
+      "edges": e
+    };
+  }
 
-function randomIndex(n) {
+  function randomIndex(n) {
     return _.random(0, n - 1);
-}
+  }
 
-function randomElement(arr) {
+  function randomElement(arr) {
     return arr[randomIndex(arr.length)];
-}
+  }
 
-function newman(n, degp) {
+  function newman(n, degp) {
     var vertices = _.times(n, function(i) {
-        return { "id": i, "openstubs": degp(), };
+      return {
+        "id": i,
+        "openstubs": degp(),
+      };
     });
     while (_.sumBy(vertices, 'openstubs') % 2 == 1) {
-        vertices[randomIndex(n)].openstubs = degp();
+      vertices[randomIndex(n)].openstubs = degp();
     }
     var edgeCount = _.sumBy(vertices, 'openstubs') / 2;
     var edges = [];
     for (var i = 0; i < edgeCount; i++) {
-        var candidates = _.filter(vertices, function(v) {
-            return v.openstubs > 0;
-        });
-        if (candidates.length == 1) {
-            console.warn("cannot create more edges. Only one vertex left", candidates);
-            break;
-        }
-        var source = randomElement(candidates);
-        var target;
-        do {
-            target = randomElement(candidates);
-        } while (target.id == source.id);
-        source.openstubs -= 1;
-        target.openstubs -= 1;
-        edges.push({ "source": source.id, "target": target.id, });
+      var candidates = _.filter(vertices, function(v) {
+        return v.openstubs > 0;
+      });
+      if (candidates.length == 1) {
+        console.warn("cannot create more edges. Only one vertex left", candidates);
+        break;
+      }
+      var source = randomElement(candidates);
+      var target;
+      do {
+        target = randomElement(candidates);
+      } while (target.id == source.id);
+      source.openstubs -= 1;
+      target.openstubs -= 1;
+      edges.push({
+        "source": source.id,
+        "target": target.id,
+      });
     }
     // remove openstubs fields
     vertices = _.map(vertices, function(v) {
-        return { "id": v.id };
+      return {
+        "id": v.id
+      };
     })
-    return { "vertices": vertices, "edges": edges, };
-}
+    return {
+      "vertices": vertices,
+      "edges": edges,
+    };
+  }
 
-// may return null
-function randomConnectedGraph(vertexCount, edgeCount, probs) {
-    if(edgeCount > vertexCount * (vertexCount - 1) / 2) {
-        console.warn("too many edges: ", vertexCount, edgeCount);
-        return null;
+  // may return null
+  function randomConnectedGraph(vertexCount, edgeCount, probs) {
+    if (edgeCount > vertexCount * (vertexCount - 1) / 2) {
+      console.warn("too many edges: ", vertexCount, edgeCount);
+      return null;
     }
     var vertices = _.times(vertexCount, function(i) {
-        return { "id": i };
+      return {
+        "id": i
+      };
     });
-    if(edgeCount < vertexCount - 1) {
-        // console.warn("skip impossible connected graph with ", vertexCount, edgeCount);
-        return null;
+    if (edgeCount < vertexCount - 1) {
+      // console.warn("skip impossible connected graph with ", vertexCount, edgeCount);
+      return null;
     }
     var edges = Array(edgeCount);
     var randEdges = randomEdges(probs, edgeCount);
     var discarded = 0;
-    while(!isConnected(vertexCount, randEdges)) {
-        discarded++;
-        if(discarded > 1000) {
-            console.warn("discarded too many unconnected graphs: ", vertexCount, edgeCount);
-            return null;
-        }
-        randEdges = randomEdges(probs, edgeCount);
+    while (!isConnected(vertexCount, randEdges)) {
+      discarded++;
+      if (discarded > 1000) {
+        console.warn("discarded too many unconnected graphs: ", vertexCount, edgeCount);
+        return null;
+      }
+      randEdges = randomEdges(probs, edgeCount);
     }
-    for( var i = 0; i < edgeCount; i += 1) {
-        edges[i] = { "source": randEdges[i*2], "target": randEdges[i*2+1], };
+    for (var i = 0; i < edgeCount; i += 1) {
+      edges[i] = {
+        "source": randEdges[i * 2],
+        "target": randEdges[i * 2 + 1],
+      };
     }
-    return { "vertices": vertices, "edges": edges, };
-}
+    return {
+      "vertices": vertices,
+      "edges": edges,
+    };
+  }
 
-function genNeighbours(vertexCount, edges) {
+  function genNeighbours(vertexCount, edges) {
     var neighbours = Array(vertexCount);
-    for( var i = 0; i < edges.length / 2; i++) {
-        var v1 = edges[i*2];
-        var v2 = edges[i*2+1];
-        if(neighbours[v1] !== undefined) neighbours[v1].push(v2); else neighbours[v1] = [v2];
-        if(neighbours[v2] !== undefined) neighbours[v2].push(v1); else neighbours[v2] = [v1];
+    for (var i = 0; i < edges.length / 2; i++) {
+      var v1 = edges[i * 2];
+      var v2 = edges[i * 2 + 1];
+      if (neighbours[v1] !== undefined) neighbours[v1].push(v2);
+      else neighbours[v1] = [v2];
+      if (neighbours[v2] !== undefined) neighbours[v2].push(v1);
+      else neighbours[v2] = [v1];
     }
     return neighbours;
-}
+  }
 
-function isConnected(vertexCount, edges) {
-    if(vertexCount == 1) return true;
-    if(edges.length / 2 < vertexCount - 1) return false;
+  function isConnected(vertexCount, edges) {
+    if (vertexCount == 1) return true;
+    if (edges.length / 2 < vertexCount - 1) return false;
     var visited = Array(vertexCount);
     var visitCount = 0;
     var neighbours = genNeighbours(vertexCount, edges);
     var stack = [0]; // put first vertex on stack
-    while(stack.length > 0) {
-        var current = stack.pop();
-        if(!visited[current]) {
-            visited[current] = 1;
-            visitCount += 1;
-            stack = stack.concat(neighbours[current]);
-        }
+    while (stack.length > 0) {
+      var current = stack.pop();
+      if (!visited[current]) {
+        visited[current] = 1;
+        visitCount += 1;
+        stack = stack.concat(neighbours[current]);
+      }
     }
     return visitCount == vertexCount;
-}
+  }
 
-function randomEdges(probs, edgeCount) {
+  function randomEdges(probs, edgeCount) {
     var vertexCount = probs.length;
     var cumulative = Array(vertexCount);
     cumulative[0] = probs[0];
-    for( var i = 1; i < vertexCount; i ++) {
-        cumulative[i] = cumulative[i-1] + probs[i];
+    for (var i = 1; i < vertexCount; i++) {
+      cumulative[i] = cumulative[i - 1] + probs[i];
     }
 
     var epsilon = 1e-6;
-    if(cumulative[vertexCount-1] < (1-epsilon) || cumulative[vertexCount-1] > (1+epsilon)) {
-        console.error("probability does not sum to 1. is: ", cumulative[vertexCount-1]);
-        return;
+    if (cumulative[vertexCount - 1] < (1 - epsilon) || cumulative[vertexCount - 1] > (1 + epsilon)) {
+      console.error("probability does not sum to 1. is: ", cumulative[vertexCount - 1]);
+      return;
     }
 
     function getIndexLinear(p) {
-        if( p <= cumulative[0] ) return 0;
-        for(var i = 1; i < cumulative.length; i++) {
-            if( cumulative[i-1] < p && p <= cumulative[i] ) return i;
-        }
-        console.error("p > 1");
+      if (p <= cumulative[0]) return 0;
+      for (var i = 1; i < cumulative.length; i++) {
+        if (cumulative[i - 1] < p && p <= cumulative[i]) return i;
+      }
+      console.error("p > 1");
     }
 
     function getIndex(p) {
-        // Binary Search
-        var lo = 0;
-        var hi = vertexCount - 1;
-        while(lo <= hi) {
-            var current = lo + Math.floor((hi-lo) / 2);
-            if(cumulative[current] > p) hi = current - 1;
-            else lo = current+1;
-        }
-        return lo;
+      // Binary Search
+      var lo = 0;
+      var hi = vertexCount - 1;
+      while (lo <= hi) {
+        var current = lo + Math.floor((hi - lo) / 2);
+        if (cumulative[current] > p) hi = current - 1;
+        else lo = current + 1;
+      }
+      return lo;
     }
 
     var edges = Array(edgeCount * 2);
-    var adjacencyMatrix = _.times(vertexCount, function() { return []});
+    var adjacencyMatrix = _.times(vertexCount, function() {
+      return []
+    });
 
     function edgeExistsLinear(v1, v2, limit) {
-        for( var i = 0; i < limit; i++ ) {
-            if(edges[2*i] == v1 && edges[2*i+1] == v2)
-                return true;
-        }
-        return false;
+      for (var i = 0; i < limit; i++) {
+        if (edges[2 * i] == v1 && edges[2 * i + 1] == v2)
+          return true;
+      }
+      return false;
     }
 
     function edgeExists(v1, v2, limit) {
-        return adjacencyMatrix[v1][v2] === true;
+      return adjacencyMatrix[v1][v2] === true;
     }
 
     var discarded = 0;
     // add edges
-    for( var i = 0; i < edgeCount; i++) {
-        var v1 = getIndex(Math.random());
-        var v2 = getIndex(Math.random());
-        if(v1 > v2) { // order vertices, because undirected edge
-            var tmp  = v1;
-            v1 = v2;
-            v2 = tmp;
+    for (var i = 0; i < edgeCount; i++) {
+      var v1 = getIndex(Math.random());
+      var v2 = getIndex(Math.random());
+      if (v1 > v2) { // order vertices, because undirected edge
+        var tmp = v1;
+        v1 = v2;
+        v2 = tmp;
+      }
+
+      if (v1 == v2) {
+        i -= 1;
+        continue;
+      } // no loops
+      if (edgeExists(v1, v2, i)) {
+        discarded++;
+        if (discarded > 10000000) {
+          edges = edges.slice(0, 2 * i);
+          console.warn("discarded too many edges. ", i, edgeCount);
+          break;
         }
+        i -= 1;
+        continue;
+      } // no duplicates
 
-        if(v1 == v2) {i -=1; continue;} // no loops
-        if(edgeExists(v1,v2,i)) {
-            discarded++;
-            if( discarded > 10000000 ) {
-                edges = edges.slice(0, 2*i);
-                console.warn("discarded too many edges. ", i, edgeCount);
-                break;
-            }
-            i -=1; continue;
-        } // no duplicates
-
-        edges[2*i] = v1;
-        edges[2*i+1] = v2;
-        adjacencyMatrix[v1][v2] = true;
+      edges[2 * i] = v1;
+      edges[2 * i + 1] = v2;
+      adjacencyMatrix[v1][v2] = true;
     }
     return edges;
-}
+  }
 
-function GML(graph) {
+  function GML(graph) {
     // http://www.fim.uni-passau.de/fileadmin/files/lehrstuhl/brandenburg/projekte/gml/gml-technical-report.pdf
     var nodes = _(graph.vertices).map(function(v) {
-        var attributes = (isNaN(v.x) || isNaN(v.y)) ? "" : " x " + Math.round(v.x) + " y " + Math.round(v.y);
-        return "node [id " + v.id + attributes + "]";
+      var attributes = (isNaN(v.x) || isNaN(v.y)) ? "" : " x " + Math.round(v.x) + " y " + Math.round(v.y);
+      return "node [id " + v.id + attributes + "]";
     }).join(" ");
     var edges = _(graph.edges).map(function(e) {
-        var source = e.source.id || e.source;
-        var target = e.target.id || e.target;
-        return "edge [source " + source + " target " + target + "]";
+      var source = e.source.id || e.source;
+      var target = e.target.id || e.target;
+      return "edge [source " + source + " target " + target + "]";
     }).join(" ");
     return "graph [" + nodes + " " + edges + "]";
-}
+  }
 
-function detectBrowser() {
+  function detectBrowser() {
     var nVer = navigator.appVersion;
     var nAgt = navigator.userAgent;
     var browserName = navigator.appName;
@@ -455,164 +529,175 @@ function detectBrowser() {
 
     // In Opera, the true version is after "Opera" or after "Version"
     if ((verOffset = nAgt.indexOf("Opera")) != -1) {
-        browserName = "Opera";
-        fullVersion = nAgt.substring(verOffset + 6);
-        if ((verOffset = nAgt.indexOf("Version")) != -1)
-            fullVersion = nAgt.substring(verOffset + 8);
+      browserName = "Opera";
+      fullVersion = nAgt.substring(verOffset + 6);
+      if ((verOffset = nAgt.indexOf("Version")) != -1)
+        fullVersion = nAgt.substring(verOffset + 8);
     }
     // In MSIE, the true version is after "MSIE" in userAgent
     else if ((verOffset = nAgt.indexOf("MSIE")) != -1) {
-        browserName = "Microsoft Internet Explorer";
-        fullVersion = nAgt.substring(verOffset + 5);
+      browserName = "Microsoft Internet Explorer";
+      fullVersion = nAgt.substring(verOffset + 5);
     }
     // In Chrome, the true version is after "Chrome"
     else if ((verOffset = nAgt.indexOf("Chrome")) != -1) {
-        browserName = "Chrome";
-        fullVersion = nAgt.substring(verOffset + 7);
+      browserName = "Chrome";
+      fullVersion = nAgt.substring(verOffset + 7);
     }
     // In Safari, the true version is after "Safari" or after "Version"
     else if ((verOffset = nAgt.indexOf("Safari")) != -1) {
-        browserName = "Safari";
-        fullVersion = nAgt.substring(verOffset + 7);
-        if ((verOffset = nAgt.indexOf("Version")) != -1)
-            fullVersion = nAgt.substring(verOffset + 8);
+      browserName = "Safari";
+      fullVersion = nAgt.substring(verOffset + 7);
+      if ((verOffset = nAgt.indexOf("Version")) != -1)
+        fullVersion = nAgt.substring(verOffset + 8);
     }
     // In Firefox, the true version is after "Firefox"
     else if ((verOffset = nAgt.indexOf("Firefox")) != -1) {
-        browserName = "Firefox";
-        fullVersion = nAgt.substring(verOffset + 8);
+      browserName = "Firefox";
+      fullVersion = nAgt.substring(verOffset + 8);
     }
     // In most other browsers, "name/version" is at the end of userAgent
     else if ((nameOffset = nAgt.lastIndexOf(' ') + 1) <
-        (verOffset = nAgt.lastIndexOf('/'))) {
-        browserName = nAgt.substring(nameOffset, verOffset);
-        fullVersion = nAgt.substring(verOffset + 1);
-        if (browserName.toLowerCase() == browserName.toUpperCase()) {
-            browserName = navigator.appName;
-        }
+      (verOffset = nAgt.lastIndexOf('/'))) {
+      browserName = nAgt.substring(nameOffset, verOffset);
+      fullVersion = nAgt.substring(verOffset + 1);
+      if (browserName.toLowerCase() == browserName.toUpperCase()) {
+        browserName = navigator.appName;
+      }
     }
     // trim the fullVersion string at semicolon/space if present
     if ((ix = fullVersion.indexOf(";")) != -1)
-        fullVersion = fullVersion.substring(0, ix);
+      fullVersion = fullVersion.substring(0, ix);
     if ((ix = fullVersion.indexOf(" ")) != -1)
-        fullVersion = fullVersion.substring(0, ix);
+      fullVersion = fullVersion.substring(0, ix);
 
     majorVersion = parseInt('' + fullVersion, 10);
     if (isNaN(majorVersion)) {
-        fullVersion = '' + parseFloat(navigator.appVersion);
-        majorVersion = parseInt(navigator.appVersion, 10);
+      fullVersion = '' + parseFloat(navigator.appVersion);
+      majorVersion = parseInt(navigator.appVersion, 10);
     }
 
     return {
-        "browser": browserName,
-        "browser_majorversion": majorVersion,
-        "browser_fullversion": fullVersion
+      "browser": browserName,
+      "browser_majorversion": majorVersion,
+      "browser_fullversion": fullVersion
     };
-}
+  }
 
-function StringEndsWithPolyfill() {
+  function StringEndsWithPolyfill() {
     if (!String.prototype.endsWith) {
-        String.prototype.endsWith = function(searchString, position) {
-            var subjectString = this.toString();
-            if (typeof position !== 'number' || !isFinite(position) || Math.floor(position) !== position || position > subjectString.length) {
-                position = subjectString.length;
-            }
-            position -= searchString.length;
-            var lastIndex = subjectString.lastIndexOf(searchString, position);
-            return lastIndex !== -1 && lastIndex === position;
-        };
+      String.prototype.endsWith = function(searchString, position) {
+        var subjectString = this.toString();
+        if (typeof position !== 'number' || !isFinite(position) || Math.floor(position) !== position || position > subjectString.length) {
+          position = subjectString.length;
+        }
+        position -= searchString.length;
+        var lastIndex = subjectString.lastIndexOf(searchString, position);
+        return lastIndex !== -1 && lastIndex === position;
+      };
     }
-}
+  }
 </script>
 
 <style type="text/css">
-    /* http://danielstern.ca/range.css/#/ */
-input[type=range] {
-  -webkit-appearance: none;
-  width: 100%;
-  margin: 13.8px 0;
-}
-input[type=range]:focus {
-  outline: none;
-}
-input[type=range]::-webkit-slider-runnable-track {
-  width: 100%;
-  height: 11.4px;
-  cursor: pointer;
-  box-shadow: 0px 0px 0px #000000, 0px 0px 0px #0d0d0d;
-  background: #646464;
-  border-radius: 0px;
-  border: 0px solid #010101;
-}
-input[type=range]::-webkit-slider-thumb {
-  box-shadow: 0px 0px 0px #000031, 0px 0px 0px #00004b;
-  border: 2px solid #00001e;
-  height: 39px;
-  width: 26px;
-  border-radius: 7px;
-  background: #ffffff;
-  cursor: pointer;
-  -webkit-appearance: none;
-  margin-top: -13.8px;
-}
-input[type=range]:focus::-webkit-slider-runnable-track {
-  background: #a1a1a1;
-}
-input[type=range]::-moz-range-track {
-  width: 100%;
-  height: 11.4px;
-  cursor: pointer;
-  box-shadow: 0px 0px 0px #000000, 0px 0px 0px #0d0d0d;
-  background: #646464;
-  border-radius: 0px;
-  border: 0px solid #010101;
-}
-input[type=range]::-moz-range-thumb {
-  box-shadow: 0px 0px 0px #000031, 0px 0px 0px #00004b;
-  border: 2px solid #00001e;
-  height: 39px;
-  width: 26px;
-  border-radius: 7px;
-  background: #ffffff;
-  cursor: pointer;
-}
-input[type=range]::-ms-track {
-  width: 100%;
-  height: 11.4px;
-  cursor: pointer;
-  background: transparent;
-  border-color: transparent;
-  color: transparent;
-}
-input[type=range]::-ms-fill-lower {
-  background: #272727;
-  border: 0px solid #010101;
-  border-radius: 0px;
-  box-shadow: 0px 0px 0px #000000, 0px 0px 0px #0d0d0d;
-}
-input[type=range]::-ms-fill-upper {
-  background: #646464;
-  border: 0px solid #010101;
-  border-radius: 0px;
-  box-shadow: 0px 0px 0px #000000, 0px 0px 0px #0d0d0d;
-}
-input[type=range]::-ms-thumb {
-  box-shadow: 0px 0px 0px #000031, 0px 0px 0px #00004b;
-  border: 2px solid #00001e;
-  height: 39px;
-  width: 26px;
-  border-radius: 7px;
-  background: #ffffff;
-  cursor: pointer;
-  height: 11.4px;
-}
-input[type=range]:focus::-ms-fill-lower {
-  background: #646464;
-}
-input[type=range]:focus::-ms-fill-upper {
-  background: #a1a1a1;
-}
+  /* http://danielstern.ca/range.css/#/ */
+  
+  input[type=range] {
+    -webkit-appearance: none;
+    width: 100%;
+    margin: 13.8px 0;
+  }
+  
+  input[type=range]:focus {
+    outline: none;
+  }
+  
+  input[type=range]::-webkit-slider-runnable-track {
+    width: 100%;
+    height: 11.4px;
+    cursor: pointer;
+    box-shadow: 0px 0px 0px #000000, 0px 0px 0px #0d0d0d;
+    background: #646464;
+    border-radius: 0px;
+    border: 0px solid #010101;
+  }
+  
+  input[type=range]::-webkit-slider-thumb {
+    box-shadow: 0px 0px 0px #000031, 0px 0px 0px #00004b;
+    border: 2px solid #00001e;
+    height: 39px;
+    width: 26px;
+    border-radius: 7px;
+    background: #ffffff;
+    cursor: pointer;
+    -webkit-appearance: none;
+    margin-top: -13.8px;
+  }
+  
+  input[type=range]:focus::-webkit-slider-runnable-track {
+    background: #a1a1a1;
+  }
+  
+  input[type=range]::-moz-range-track {
+    width: 100%;
+    height: 11.4px;
+    cursor: pointer;
+    box-shadow: 0px 0px 0px #000000, 0px 0px 0px #0d0d0d;
+    background: #646464;
+    border-radius: 0px;
+    border: 0px solid #010101;
+  }
+  
+  input[type=range]::-moz-range-thumb {
+    box-shadow: 0px 0px 0px #000031, 0px 0px 0px #00004b;
+    border: 2px solid #00001e;
+    height: 39px;
+    width: 26px;
+    border-radius: 7px;
+    background: #ffffff;
+    cursor: pointer;
+  }
+  
+  input[type=range]::-ms-track {
+    width: 100%;
+    height: 11.4px;
+    cursor: pointer;
+    background: transparent;
+    border-color: transparent;
+    color: transparent;
+  }
+  
+  input[type=range]::-ms-fill-lower {
+    background: #272727;
+    border: 0px solid #010101;
+    border-radius: 0px;
+    box-shadow: 0px 0px 0px #000000, 0px 0px 0px #0d0d0d;
+  }
+  
+  input[type=range]::-ms-fill-upper {
+    background: #646464;
+    border: 0px solid #010101;
+    border-radius: 0px;
+    box-shadow: 0px 0px 0px #000000, 0px 0px 0px #0d0d0d;
+  }
+  
+  input[type=range]::-ms-thumb {
+    box-shadow: 0px 0px 0px #000031, 0px 0px 0px #00004b;
+    border: 2px solid #00001e;
+    height: 39px;
+    width: 26px;
+    border-radius: 7px;
+    background: #ffffff;
+    cursor: pointer;
+    height: 11.4px;
+  }
+  
+  input[type=range]:focus::-ms-fill-lower {
+    background: #646464;
+  }
+  
+  input[type=range]:focus::-ms-fill-upper {
+    background: #a1a1a1;
+  }
 </style>
 <!-- END CUSTOM CODE -->
-
-
