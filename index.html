@@ -36,7 +36,7 @@
   var showGraphCount = 5;
   for (var g = 0; g < showGraphCount; g++) {
     var graph = {
-      "graph": randomGraph()
+      "graph": downloadRandomGraph()
     };
 
 
@@ -63,11 +63,11 @@
 
   ////////////////////////////////////////////////
 
-  function downloadExamples(n) {
+  function downloadSamples(n) {
     var header = "graph_gml,vertexCount,edgeCount,avgDeg,lambda"
     var graphs = _.times(n, function(i) {
       console.log(i + "/" + n);
-      var graph = randomGraph();
+      var graph = downloadRandomGraph();
       return GML(graph) + "," + graph.vertexCount + "," + graph.edgeCount + "," + graph.avgDeg + "," + graph.lambda;
     }).join("\n")
     var csv = header + "\n" + graphs;
@@ -129,6 +129,45 @@
     return _.map(xs, function(x) {
       return x / sum;
     });
+  }
+
+  function downloadedStringToGraph(str) {
+    var vertexCount = (str.match(/\n/g) || []).length;
+    var lines = str.split("\n");
+    var vertices = [];
+    var edges = [];
+    for (var v = 0; v < vertexCount; v++) {
+      vertices.push({
+        "id": v
+      });
+      var neighbours = _.map(_.drop(lines[v].trim().split(" "), 1), function(x) {
+        return parseInt(x);
+      });
+      var directedNeighbours = _.filter(neighbours, function(x) {
+        return x > v;
+      });
+      for (var i = 0; i < directedNeighbours.length; i++) {
+        edges.push({
+          "source": v,
+          "target": directedNeighbours[i]
+        });
+      }
+    }
+    return {
+      "vertices": vertices,
+      "edges": edges,
+      "vertexCount": vertexCount,
+      "edgeCount": edges.length,
+      "lambda": 0,
+      "avgDeg": 0,
+    };
+  }
+
+  function downloadRandomGraph() {
+    var xhr = new XMLHttpRequest();
+    xhr.open("GET", "http://communication-science.com/tigrs2/randomgraph.php", false);
+    xhr.send();
+    return downloadedStringToGraph(xhr.responseText);
   }
 
   function download(filename, text) {

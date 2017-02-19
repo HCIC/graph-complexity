@@ -3,7 +3,7 @@ library(plotly)
 setwd("/home/felix/projects/graph-complexity")
 source("graphMetrics.r")
 
-d <- read.csv(file = "/home/felix/downloads/random_graphs (46).csv", header=TRUE)
+d <- read.csv(file = "/home/felix/downloads/random_graphs (11).csv", header=TRUE)
 
 gml_column <- "graph_gml"
 # d <- graphMetrics(d, "graph_gml")
@@ -19,8 +19,8 @@ hist(d$degreesd)
 
 
 plot_ly(d) %>%
-  # add_trace( x = ~vertexCount, z = ~edgeCount, y = ~degreesd, color = ~lambda) %>%
+  add_trace( x = ~vertexCount, z = ~edgeCount, y = ~degreesd, color = ~lambda) %>%
   # add_trace( x = ~lambda, z = ~edgeCount, y = ~degreesd, color = ~degreesd) %>%
-  add_trace( x = ~lambda, y = ~degreesd, color = ~degreesd) %>%
+  # add_trace( x = ~lambda, y = ~degreesd, color = ~degreesd) %>%
   # add_trace(type = 'scatter', x = ~graph_vertexCount, y = ~graph_topologicalInfoContent) %>%
   add_trace()
