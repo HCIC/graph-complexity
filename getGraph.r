@@ -2,6 +2,7 @@ library(igraph)
 library(uuid)
 
 getGraph <- function(graphString){
+  graphString <- gsub("\\[object Object\\]", "0", graphString)
   #  characters <- as.character(graphString)
   filename <- paste("/tmp/", UUIDgenerate(), "temp.gml", sep = "")
   write(as.character(graphString), file=filename)

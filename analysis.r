@@ -22,13 +22,19 @@ loadData <- function() {
   library(tidyr)
   library(dplyr)
   library(scales)
-  data <- merge(merge(
-    read.csv(file = "~/projects/graph-complexity/batch1.csv", header=TRUE),
-    read.csv(file = "~/projects/graph-complexity/batch2.csv", header=TRUE),
-    all=TRUE
-  ),
-    read.csv(file = "~/projects/graph-complexity/batch3.csv", header=TRUE),
-    all=TRUE)
+  data <-
+    # merge(
+    # merge(
+    #   merge(
+    #     read.csv(file = "~/projects/graph-complexity/batch1.csv", header = TRUE),
+    #     read.csv(file = "~/projects/graph-complexity/batch2.csv", header = TRUE),
+    #     all = TRUE
+    #   ),
+      read.csv(file = "~/projects/graph-complexity/batch4.csv", header = TRUE)
+    #   all = TRUE
+    # ),
+    # read.csv(file = "~/projects/graph-complexity/batch4.csv", header = TRUE)
+  # )
 
 
   subdata <- data[,c(16,24,28,29,34,35,36:174)]
@@ -51,8 +57,8 @@ loadData <- function() {
   newdata$pred = abs( 7 - newdata$exp2 - newdata$exp1 ) + newdata$Answer.distracted
   d <- na.omit(newdata)
 
-  onlyOneComponent <- Vectorize(function(g) {count_components(getGraph(g), mode = "weak") == 1})
-  d <- filter(d, onlyOneComponent(d$graph_graph))
+  # onlyOneComponent <- Vectorize(function(g) {count_components(getGraph(g), mode = "weak") == 1})
+  # d <- filter(d, onlyOneComponent(d$graph_graph))
 
   d
 }
@@ -63,6 +69,10 @@ d <- loadData()
 plot_ly(d, x=~pred)
 gml_column <- "graph_graph"
 d <- graphMetrics(d, gml_column)
+
+library(ggplot2)
+library(plotly)
+library(lme4)
 
 
 correlations <- c()
@@ -101,10 +111,6 @@ plot_ly(d, x = ~graph_topologicalInfoContent)
 
 
 #### EVALUATION
-library(ggplot2)
-library(plotly)
-library(lme4)
-
 # plot_ly(d, x= ~graph_diameter, y=~graph_vertexCount, z=~graph_complexity, color=~graph_beauty, size = ~WorkTimeInSeconds)
 plot_ly(d) %>%
   add_trace( x = ~graph_vertexCount, z = ~graph_edgeCount, y = ~graph_degreesd, color = ~graph_complexity) %>%

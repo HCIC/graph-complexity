@@ -17,7 +17,8 @@ graphMetrics <- function (d, gml_column) {
 
   # TODO: planarity
 
-  d$graph_degreesd <- sapply(d[[gml_column]],FUN=function(g){ sd(degree_distribution(getGraph(g))) } )
+  d$graph_degreesd <- sapply(d[[gml_column]],FUN=function(g){ sd(igraph::degree(getGraph(g))) } )
+  d$graph_degreemean <- sapply(d[[gml_column]],FUN=function(g){ mean(igraph::degree(getGraph(g))) } )
   #
   d$graph_adhesion <- sapply(d[[gml_column]],FUN=function(g){ a <- adhesion(getGraph(g), checks=TRUE); if(a < 0) 0 else a } )
   d$graph_cohesion <- sapply(d[[gml_column]],FUN=function(g){ cohesion(getGraph(g), checks=TRUE) } )
