@@ -551,8 +551,8 @@
       return "node [id " + v.id + attributes + "]";
     }).join(" ");
     var edges = _(graph.edges).map(function(e) {
-      var source = e.source.id || e.source;
-      var target = e.target.id || e.target;
+      var source = ('id' in e.source) ? e.source.id : e.source;
+      var target = ('id' in e.target) ? e.target.id : e.target;
       return "edge [source " + source + " target " + target + "]";
     }).join(" ");
     return "graph [" + nodes + " " + edges + "]";
@@ -640,17 +640,17 @@
 
 <style type="text/css">
   /* http://danielstern.ca/range.css/#/ */
-  
+
   input[type=range] {
     -webkit-appearance: none;
     width: 100%;
     margin: 13.8px 0;
   }
-  
+
   input[type=range]:focus {
     outline: none;
   }
-  
+
   input[type=range]::-webkit-slider-runnable-track {
     width: 100%;
     height: 11.4px;
@@ -660,7 +660,7 @@
     border-radius: 0px;
     border: 0px solid #010101;
   }
-  
+
   input[type=range]::-webkit-slider-thumb {
     box-shadow: 0px 0px 0px #000031, 0px 0px 0px #00004b;
     border: 2px solid #00001e;
@@ -672,11 +672,11 @@
     -webkit-appearance: none;
     margin-top: -13.8px;
   }
-  
+
   input[type=range]:focus::-webkit-slider-runnable-track {
     background: #a1a1a1;
   }
-  
+
   input[type=range]::-moz-range-track {
     width: 100%;
     height: 11.4px;
@@ -686,7 +686,7 @@
     border-radius: 0px;
     border: 0px solid #010101;
   }
-  
+
   input[type=range]::-moz-range-thumb {
     box-shadow: 0px 0px 0px #000031, 0px 0px 0px #00004b;
     border: 2px solid #00001e;
@@ -696,7 +696,7 @@
     background: #ffffff;
     cursor: pointer;
   }
-  
+
   input[type=range]::-ms-track {
     width: 100%;
     height: 11.4px;
@@ -705,21 +705,21 @@
     border-color: transparent;
     color: transparent;
   }
-  
+
   input[type=range]::-ms-fill-lower {
     background: #272727;
     border: 0px solid #010101;
     border-radius: 0px;
     box-shadow: 0px 0px 0px #000000, 0px 0px 0px #0d0d0d;
   }
-  
+
   input[type=range]::-ms-fill-upper {
     background: #646464;
     border: 0px solid #010101;
     border-radius: 0px;
     box-shadow: 0px 0px 0px #000000, 0px 0px 0px #0d0d0d;
   }
-  
+
   input[type=range]::-ms-thumb {
     box-shadow: 0px 0px 0px #000031, 0px 0px 0px #00004b;
     border: 2px solid #00001e;
@@ -730,11 +730,11 @@
     cursor: pointer;
     height: 11.4px;
   }
-  
+
   input[type=range]:focus::-ms-fill-lower {
     background: #646464;
   }
-  
+
   input[type=range]:focus::-ms-fill-upper {
     background: #a1a1a1;
   }
